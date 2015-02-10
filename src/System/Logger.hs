@@ -523,9 +523,8 @@ withLoggerCtx
 withLoggerCtx config backend =
         bracket (createLogger config backend) releaseLogger
 
--- | For simple cases, when the logger threshold and the
--- logger scope is constant this function can be used to
--- directly initialize a log function.
+-- | For simple cases, when the logger threshold and the logger scope is
+-- constant this function can be used to directly initialize a log function.
 --
 withLogFunction
     ∷ (NFData a, MonadIO μ, MonadBaseControl IO μ)
@@ -601,6 +600,9 @@ handleLoggerBackend conf msg = do
 -- Log Function
 
 -- Log a message with the given logger context
+--
+-- If the logger context has been released (by closing the queue)
+-- this function has not effect.
 --
 loggCtx
     ∷ NFData a
