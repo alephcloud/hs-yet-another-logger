@@ -1,7 +1,7 @@
 A logging framework that was written with flexibility and performance
 in mind.
 
-/THIS VERSION IS YET A PREVIEW/
+*THIS VERSION IS YET A PREVIEW*
 
 The framework consists of four main parts that each are abstracted
 via function signatures and thus replaceable.
