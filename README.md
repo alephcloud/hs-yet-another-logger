@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/alephcloud/hs-yet-another-logger.svg)](https://travis-ci.org/alephcloud/hs-yet-another-logger)
+
 A logging framework that was written with flexibility and performance
 in mind.
 
