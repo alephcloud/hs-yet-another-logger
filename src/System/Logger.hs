@@ -121,7 +121,7 @@ import Configuration.Utils.Validation
 import Control.Concurrent.Async
 -- FIXME: use a better data structure with non-amortized complexity bounds
 import Control.Monad.STM
-import Control.Concurrent.STM.TBQueue
+import Control.Concurrent.STM.TBMQueue
 import Control.DeepSeq
 import Control.Exception.Lifted
 import Control.Exception.Enclosed
@@ -459,7 +459,7 @@ type LogFunction a m = LogLevel → a → m ()
 -- are enqueued and processed asynchronously by a background worker that takes
 -- the message from queue and calls the backend function for each log message.
 --
-type LoggerQueue a = TBQueue (LogMessage a)
+type LoggerQueue a = TBMQueue (LogMessage a)
 
 data LoggerCtx a = LoggerCtx
     { _loggerQueue ∷ !(LoggerQueue a)
@@ -467,7 +467,7 @@ data LoggerCtx a = LoggerCtx
     , _loggerThreshold ∷ !LogLevel
     , _loggerScope ∷ !LogScope
     }
-    deriving (Eq, Typeable, Generic)
+    deriving (Typeable, Generic)
 
 loggerQueue ∷ Lens' (LoggerCtx a) (LoggerQueue a)
 loggerQueue = lens _loggerQueue $ \a b → a { _loggerQueue = b }
@@ -491,7 +491,7 @@ createLogger
     → LoggerBackend a
     → μ (LoggerCtx a)
 createLogger LoggerConfig{..} backend = liftIO $ do
-    queue ← newTBQueueIO _loggerConfigQueueSize
+    queue ← newTBMQueueIO _loggerConfigQueueSize
     worker ← backendWorker backend queue
     return $ LoggerCtx
         { _loggerQueue = queue
@@ -501,18 +501,26 @@ createLogger LoggerConfig{..} backend = liftIO $ do
         }
 
 -- FIXME: make this more reliable
+-- For instance if 'readTBMQeue' throws an exception 'releaseLogger'
+-- may not terminate.
+--
 backendWorker
     ∷ LoggerBackend a
     → LoggerQueue a
     → IO (Async ())
-backendWorker backend queue = async ∘ forever ∘ flip catchAny (const $ return ()) $
-    atomically (readTBQueue queue) >>= backend
+backendWorker backend queue = async $ go `catchAny` (const $ go)
+  where
+    go = atomically (readTBMQueue queue) >>= \case
+        Nothing → return ()
+        Just msg → backend msg >> go
 
 releaseLogger
     ∷ MonadIO μ
     ⇒ LoggerCtx a
     → μ ()
-releaseLogger LoggerCtx{..} = liftIO $ cancel _loggerWorker
+releaseLogger LoggerCtx{..} = liftIO $ do
+    atomically $ closeTBMQueue _loggerQueue
+    wait _loggerWorker
 
 withLoggerCtx
     ∷ (MonadIO μ, MonadBaseControl IO μ)
@@ -613,7 +621,7 @@ loggCtx LoggerCtx{..} level msg = do
         Quiet → return ()
         threshold
             | level ≤ threshold → liftIO ∘ atomically $
-                writeTBQueue _loggerQueue $!! LogMessage
+                writeTBMQueue _loggerQueue $!! LogMessage
                     { _logMsg = msg
                     , _logMsgLevel = level
                     , _logMsgScope = _loggerScope

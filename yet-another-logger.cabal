@@ -146,6 +146,7 @@ Library
         mtl >= 2.2,
         optparse-applicative >= 0.11,
         stm >= 2.4,
+        stm-chans >= 3.0,
         text >= 1.2,
         trace >= 0.1,
         transformers >= 0.3
