@@ -69,3 +69,4 @@ aggregated for statistical analysis. All this is easily configurable in
 a single place in the code.
 
 
+> [Greg] monad-logger is already a battle-tested heavily optimized logger. I would like to see if we can add the formatting capabilities we need on top of it.
