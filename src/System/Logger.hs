@@ -176,9 +176,9 @@ import System.Logger.Internal
 -- >     logg Info "moin"
 -- >     withLabel ("function", "f") f
 -- >     logg Info "tschüss"
--- >  where
--- >    f = withLevel Debug $ do
--- >        logg Debug "debug f"
+-- >   where
+-- >     f = withLevel Debug $ do
+-- >         logg Debug "debug f"
 --
 withConsoleLogger
     ∷ (MonadIO m, MonadBaseControl IO m)
@@ -663,11 +663,11 @@ releaseLogger LoggerCtx{..} = liftIO $ do
 -- >     → (LoggerT T.Text m α)
 -- >     → m α
 -- > withConsoleLogger level = do
--- >    backend ← mkHandleLoggerBackend $ config ^. loggerConfigBackend
--- >    withLoggerCtx config backend ∘ flip runLoggerT
--- >  where
--- >    config = defaultLoggerConfig
--- >        & loggerConfigThreshold .~ level
+-- >     backend ← mkHandleLoggerBackend $ config ^. loggerConfigBackend
+-- >     withLoggerCtx config backend ∘ flip runLoggerT
+-- >   where
+-- >     config = defaultLoggerConfig
+-- >         & loggerConfigThreshold .~ level
 --
 withLoggerCtx
     ∷ (MonadIO μ, MonadBaseControl IO μ)

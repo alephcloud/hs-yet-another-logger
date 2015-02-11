@@ -14,9 +14,9 @@ main = withConsoleLogger Info $ do
     logg Info "moin"
     withLabel ("function", "f") f
     logg Info "tschüss"
- where
-   f = withLevel Debug $ do
-       logg Debug "debug f"
+  where
+    f = withLevel Debug $ do
+        logg Debug "debug f"
 ```
 
 Description
