@@ -14,15 +14,29 @@ module Main
 ( main
 ) where
 
+import Distribution.Simple.Utils (withTempFile)
+
+import System.IO
 import System.Logger
 
 main ∷ IO ()
-main = withConsoleLogger Info $ do
-    logg Info "moin"
-    withLabel ("function", "f") f
-    logg Debug "don't show this"
-    logg Info "tschüss"
- where
-   f = withLevel Debug $ do
-       logg Debug "debug f"
+main = do
+
+    -- log to console
+    withConsoleLogger Info $ withLabel ("logger", "console") run
+
+    -- log to a file
+    withTempFile "." "logfile.log" $ \f h → do
+        hClose h
+        withFileLogger f Info $ withLabel ("logger", "file") run
+        readFile f >>= putStrLn
+
+  where
+    f = withLevel Debug $ logg Debug "debug f"
+
+    run = do
+        logg Info "moin"
+        withLabel ("function", "f") f
+        logg Debug "don't show this"
+        logg Info "tschüss"
 
