@@ -161,18 +161,16 @@ import System.Logger.Utils
 
 -- | A simple console logger.
 --
--- This function is a an example for a very basic usage of this library:
---
--- > withConsoleLogger
--- >     ∷ (MonadIO m, MonadBaseControl IO m)
--- >     ⇒ LogLevel
--- >     → (LoggerT T.Text m α)
--- >     → m α
--- > withConsoleLogger level = withLoggerCtx config backend ∘ flip runLoggerT
--- >   where
--- >     config = defaultLoggerConfig
--- >         & loggerConfigThreshold .~ level
--- >     backend = handleLoggerBackend $ config ^. loggerConfigBackend
+-- > import System.Logger
+-- >
+-- > main ∷ IO ()
+-- > main = withConsoleLogger Info $ do
+-- >     logg Info "moin"
+-- >     withLabel ("function", "f") f
+-- >     logg Info "tschüss"
+-- >  where
+-- >    f = withLevel Debug $ do
+-- >        logg Debug "debug f"
 --
 withConsoleLogger
     ∷ (MonadIO m, MonadBaseControl IO m)
@@ -522,6 +520,22 @@ releaseLogger LoggerCtx{..} = liftIO $ do
     atomically $ closeTBMQueue _loggerQueue
     wait _loggerWorker
 
+-- | Provide a computation with a 'LoggerContext'.
+--
+-- Here is an example how this can be used to run a computation
+-- with a 'MonadLog' constraint:
+--
+-- > withConsoleLogger
+-- >     ∷ (MonadIO m, MonadBaseControl IO m)
+-- >     ⇒ LogLevel
+-- >     → (LoggerT T.Text m α)
+-- >     → m α
+-- > withConsoleLogger level = withLoggerCtx config backend ∘ flip runLoggerT
+-- >   where
+-- >     config = defaultLoggerConfig
+-- >         & loggerConfigThreshold .~ level
+-- >     backend = handleLoggerBackend $ config ^. loggerConfigBackend
+--
 withLoggerCtx
     ∷ (MonadIO μ, MonadBaseControl IO μ)
     ⇒ LoggerConfig
