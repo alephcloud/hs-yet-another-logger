@@ -60,7 +60,7 @@ import qualified Options.Applicative as O
 import Prelude.Unicode
 
 import qualified System.Console.ANSI as A
-import System.IO (stdout)
+import System.IO (Handle)
 
 -- -------------------------------------------------------------------------- --
 -- Color Option
@@ -112,8 +112,9 @@ pColorOption = option (eitherReader readColorOption)
 
 useColor
     ∷ ColorOption
+    → Handle
     → IO Bool
-useColor ColorFalse = return False
-useColor ColorTrue = return True
-useColor ColorAuto = A.hSupportsANSI stdout -- FIXME: what about stderr
+useColor ColorFalse _ = return False
+useColor ColorTrue _ = return True
+useColor ColorAuto handle = A.hSupportsANSI handle
 

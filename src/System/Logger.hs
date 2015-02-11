@@ -155,6 +155,7 @@ import qualified Options.Applicative as O
 import Prelude.Unicode
 
 import qualified System.Console.ANSI as A
+import System.IO
 
 -- internal modules
 
@@ -699,7 +700,7 @@ handleLoggerBackend
     → LoggerBackend T.Text
 handleLoggerBackend conf eitherMsg = do
     -- FIXME FIXME FIXME: don't do this for each message!
-    colored ← useColor $ conf ^. loggerBackendConfigColor
+    colored ← useColor $ conf ^. loggerBackendConfigColor stdout
     T.putStrLn
         $ inLevelColor colored ("[" ⊕ sshow level ⊕ "] ")
         ⊕ inScopeColor colored ("[" ⊕ formatedScope ⊕ "] ")
