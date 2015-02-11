@@ -24,6 +24,14 @@
 -- Maintainer: Lars Kuhtz <lkuhtz@pivotmail.com>
 -- Stability: experimental
 --
+-- This module provides a logger that implements the logger interface
+-- that is defined in "System.Logger.Types".
+--
+-- If you want to roll your own implementation you may this implementation
+-- as an example and starting point.
+--
+-- The definitions in "System.Logger.Types" are re-exported by this module.
+--
 
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -45,20 +53,10 @@ module System.Logger
 ( withConsoleLogger
 , withFileLogger
 
--- * Log-Level
-, LogLevel(..)
-, readLogLevel
-, logLevelText
-, pLogLevel
-
--- * Log-Scope
-, LogLabel
-, LogScope
+-- * Re-Export Logger Interface
+, module System.Logger.Types
 
 -- * Logger Configuration
-, QueuePolicy(..)
-, queuePolicyText
-, readQueuePolicy
 , LoggerConfig(..)
 , loggerConfigQueueSize
 , loggerConfigBackend
@@ -85,12 +83,6 @@ module System.Logger
 , validateLoggerBackendConfig
 , pLoggerBackendConfig
 
--- * Logger
-
-, LoggerBackend
-, LogFunction
-, LogFunctionIO
-
 -- ** Logger Context
 , LoggerCtx
 , loggerScope
@@ -99,10 +91,6 @@ module System.Logger
 , releaseLogger
 , withLoggerCtx
 , loggCtx
--- ** Running computations with modified logger context
-, withLogLabel
-, withLogLevel
-, withLogQueuePolicy
 -- ** Simple LogFunction on static logger context
 , withLogFunction
 
@@ -111,14 +99,10 @@ module System.Logger
 , withHandleLoggerBackend
 , handleLoggerBackend
 
--- * MonadLog
+-- * LoggerT Monad Transformer
 
-, MonadLog(..)
 , LoggerT
 , runLoggerT
-
--- * Tools
--- , logErrorsG
 ) where
 
 import Configuration.Utils hiding (Lens', Error)
@@ -136,9 +120,6 @@ import Control.Lens hiding ((.=))
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.Trans.Control
-import Control.Monad.Trans.Either
-import Control.Monad.Trans.State
-import Control.Monad.Trans.Trace
 
 import qualified Data.CaseInsensitive as CI
 import qualified Data.List as L
@@ -163,6 +144,7 @@ import System.IO
 
 import System.Logger.ColorOption
 import System.Logger.Internal
+import System.Logger.Types
 
 -- -------------------------------------------------------------------------- --
 -- Convenient Logging to Console
@@ -210,96 +192,7 @@ withFileLogger f level inner =
         & loggerConfigBackend ∘ loggerBackendConfigHandle .~ FileHandle f
 
 -- -------------------------------------------------------------------------- --
--- Log-Level
-
-data LogLevel
-    = Quiet
-    | Error
-    | Warn
-    | Info
-    | Debug
-    deriving (Show, Read, Eq, Ord, Enum, Bounded, Typeable, Generic)
-
-instance NFData LogLevel
-
-readLogLevel
-    ∷  (MonadError e m, Eq a, Show a, CI.FoldCase a, IsString a, IsString e, Monoid e)
-    ⇒ a
-    → m LogLevel
-readLogLevel x = case CI.mk x of
-    "quiet" → return Quiet
-    "error" → return Error
-    "warn" → return Warn
-    "info" → return Info
-    "debug" → return Debug
-    e → throwError $ "unexpected log level value: "
-        ⊕ fromString (show e)
-        ⊕ ", expected \"quiet\", \"error\", \"warn\", \"info\", or \"debug\""
-
-logLevelText
-    ∷ IsString a
-    ⇒ LogLevel
-    → a
-logLevelText Quiet = "quiet"
-logLevelText Error = "error"
-logLevelText Warn = "warn"
-logLevelText Info = "info"
-logLevelText Debug = "debug"
-
-instance ToJSON LogLevel where
-    toJSON = String ∘ logLevelText
-
-instance FromJSON LogLevel where
-    parseJSON = withText "LogLevel" $ either fail return ∘ readLogLevel
-
-pLogLevel ∷ O.Parser LogLevel
-pLogLevel = option (eitherReader readLogLevel)
-    × long "loglevel"
-    ⊕ metavar "quiet|error|warn|info|debug"
-    ⊕ help "threshold for log messages"
-
--- -------------------------------------------------------------------------- --
--- Log-Label
-
-type LogLabel = (T.Text, T.Text)
-type LogScope = [LogLabel]
-
--- -------------------------------------------------------------------------- --
 -- Logger Configuration
-
--- | Policy that determines how the case of a congested logging
--- pipeline is addressed.
---
-data QueuePolicy
-    = QueuePolicyDiscard
-    | QueuePolicyRaise
-    | QueuePolicyBlock
-    deriving (Show, Read, Eq, Ord, Bounded, Enum, Typeable, Generic)
-
-queuePolicyText ∷ IsString s ⇒ QueuePolicy → s
-queuePolicyText QueuePolicyDiscard = "discard"
-queuePolicyText QueuePolicyRaise = "raise"
-queuePolicyText QueuePolicyBlock = "block"
-
-readQueuePolicy
-    ∷ (MonadError e m, Eq a, Show a, CI.FoldCase a, IsText a, IsString e, Monoid e)
-    ⇒ a
-    → m QueuePolicy
-readQueuePolicy x = case CI.mk tx of
-    "discard" → return QueuePolicyDiscard
-    "raise" → return QueuePolicyRaise
-    "block" → return QueuePolicyBlock
-    e → throwError
-        $ "invalid queue policy value " ⊕ fromString (show e) ⊕ ";"
-        ⊕ " the queue policy value must be one of \"discard\", \"raise\", or \"block\""
-  where
-    tx = packed # x
-
-instance ToJSON QueuePolicy where
-    toJSON = toJSON ∘ (queuePolicyText ∷ QueuePolicy → T.Text)
-
-instance FromJSON QueuePolicy where
-    parseJSON = withText "QueuePolicy" $ either fail return ∘ readQueuePolicy
 
 -- | Logger Configuration
 --
@@ -310,7 +203,7 @@ data LoggerConfig = LoggerConfig
         -- ^ initial log threshold, can be changed later on
     , _loggerConfigScope ∷ !LogScope
         -- ^ initial stack of log labels, can be extended later on
-    , _loggerConfigQueuePolicy ∷ !QueuePolicy
+    , _loggerConfigPolicy ∷ !LogPolicy
         -- ^ how to deal with a congested logging pipeline
     }
     deriving (Show, Read, Eq, Ord, Typeable, Generic)
@@ -327,8 +220,8 @@ loggerConfigThreshold = lens _loggerConfigThreshold $ \a b → a { _loggerConfig
 loggerConfigScope ∷ Lens' LoggerConfig LogScope
 loggerConfigScope = lens _loggerConfigScope $ \a b → a { _loggerConfigScope = b }
 
-loggerConfigQueuePolicy ∷ Lens' LoggerConfig QueuePolicy
-loggerConfigQueuePolicy = lens _loggerConfigQueuePolicy $ \a b → a { _loggerConfigQueuePolicy = b }
+loggerConfigPolicy ∷ Lens' LoggerConfig LogPolicy
+loggerConfigPolicy = lens _loggerConfigPolicy $ \a b → a { _loggerConfigPolicy = b }
 
 instance NFData LoggerConfig
 
@@ -338,7 +231,7 @@ defaultLoggerConfig = LoggerConfig
     , _loggerConfigBackend = defaultLoggerBackendConfig
     , _loggerConfigThreshold = Warn
     , _loggerConfigScope = []
-    , _loggerConfigQueuePolicy = QueuePolicyDiscard
+    , _loggerConfigPolicy = LogPolicyDiscard
     }
 
 validateLoggerConfig ∷ ConfigValidation LoggerConfig λ
@@ -350,7 +243,7 @@ instance ToJSON LoggerConfig where
         , "logger_backend" .= _loggerConfigBackend
         , "log_level" .= _loggerConfigThreshold
         , "scope" .= _loggerConfigScope
-        , "queue_policy" .= _loggerConfigQueuePolicy
+        , "policy" .= _loggerConfigPolicy
         ]
 
 instance FromJSON (LoggerConfig → LoggerConfig) where
@@ -359,7 +252,7 @@ instance FromJSON (LoggerConfig → LoggerConfig) where
         <*< loggerConfigBackend %.: "logger_backend" × o
         <*< loggerConfigThreshold ..: "log_level" × o
         <*< loggerConfigScope ..: "scope" × o
-        <*< loggerConfigQueuePolicy ..: "queue_policy" × o
+        <*< loggerConfigPolicy ..: "policy" × o
 
 pLoggerConfig ∷ MParser LoggerConfig
 pLoggerConfig = id
@@ -369,10 +262,7 @@ pLoggerConfig = id
         ⊕ help "size of the internal logger queue"
     <*< loggerConfigBackend %:: pLoggerBackendConfig
     <*< loggerConfigThreshold .:: pLogLevel
-    <*< loggerConfigQueuePolicy .:: option (eitherReader $ readQueuePolicy ∘ T.pack)
-        × long "discard"
-        ⊕ metavar "block|raise|discard"
-        ⊕ help "how to deal with a congested logging pipeline"
+    <*< loggerConfigPolicy .:: pLogPolicy
 
 -- -------------------------------------------------------------------------- --
 -- Handle Logger Backend Configuration
@@ -471,68 +361,13 @@ pLoggerBackendConfig = id
     <*< loggerBackendConfigHandle .:: pLoggerHandleConfig
 
 -- -------------------------------------------------------------------------- --
--- Internal Logger Message
-
--- | The type parameter 'a' is expected to provide intances
--- of 'Show', 'Typeable', and 'NFData'.
---
--- If we need to support different backends, we may consider
--- including the backend here...
---
-data LogMessage a = LogMessage
-    { _logMsg ∷ !a
-    , _logMsgLevel ∷ !LogLevel
-    , _logMsgScope ∷ !LogScope
-        -- ^ efficiency of this depends on whether this is shared
-        -- between log messsages. Usually this should be just a pointer to
-        -- a shared list.
-    }
-    deriving (Show, Read, Eq, Ord, Typeable, Generic)
-
-logMsg ∷ Lens' (LogMessage a) a
-logMsg = lens _logMsg $ \a b → a { _logMsg = b }
-
-logMsgLevel ∷ Lens' (LogMessage a) LogLevel
-logMsgLevel = lens _logMsgLevel $ \a b → a { _logMsgLevel = b }
-
-logMsgScope ∷ Lens' (LogMessage a) LogScope
-logMsgScope = lens _logMsgScope $ \a b → a { _logMsgScope = b }
-
-instance NFData a ⇒ NFData (LogMessage a)
-
--- -------------------------------------------------------------------------- --
 -- Logger
 --
--- A logger encapsulates a queue and a background worker that dequeues
+-- The logger encapsulates a queue and a background worker that dequeues
 -- log-messages and delivers them to a backend action. The opaque logger
 -- context is thread safe. But it contains references to mutable state and
 -- no copy or derivation of it must be used out-side of it's allocation scope.
 --
-
--- | This is given to logger when it is created. It formats and delivers
--- individual log messages synchronously.
---
--- The type parameter 'a' is expected to provide instances for 'Show'
--- 'Typeable', and 'NFData'.
---
--- The 'Left' values of the argument allows the generation of log messages
--- that are independent of the parameter 'a'. The motivation for this is
--- reporting issues in Logging system itself, like a full logger queue
--- or providing statistics about the fill level of the queue. There may
--- be other uses of this, too.
---
--- TODO there may be scenarios where chunked processing is beneficial.
--- While this can be done in a closure of this function a more direct
--- support might be desirable.
---
-type LoggerBackend a = Either (LogMessage T.Text) (LogMessage a) → IO ()
-
--- | This function is provided by the logger.
---
-type LogFunctionIO a = LogLevel → a → IO ()
-type LogFunction a m = LogLevel → a → m ()
-
--- internals
 
 -- | Interal log message queue.
 --
@@ -548,7 +383,7 @@ data LoggerCtx a = LoggerCtx
     , _loggerWorker ∷ !(Async ())
     , _loggerThreshold ∷ !LogLevel
     , _loggerScope ∷ !LogScope
-    , _loggerQueuePolicy ∷ !QueuePolicy
+    , _loggerPolicy ∷ !LogPolicy
     , _loggerMissed ∷ !(TVar Int)
     }
     deriving (Typeable, Generic)
@@ -569,9 +404,9 @@ loggerScope ∷ Lens' (LoggerCtx a) LogScope
 loggerScope = lens _loggerScope $ \a b → a { _loggerScope = b }
 {-# INLINE loggerScope #-}
 
-loggerQueuePolicy ∷ Lens' (LoggerCtx a) QueuePolicy
-loggerQueuePolicy = lens _loggerQueuePolicy $ \a b → a { _loggerQueuePolicy = b }
-{-# INLINE loggerQueuePolicy #-}
+loggerPolicy ∷ Lens' (LoggerCtx a) LogPolicy
+loggerPolicy = lens _loggerPolicy $ \a b → a { _loggerPolicy = b }
+{-# INLINE loggerPolicy #-}
 
 loggerMissed ∷ Lens' (LoggerCtx a) (TVar Int)
 loggerMissed = lens _loggerMissed $ \a b → a { _loggerMissed = b }
@@ -591,7 +426,7 @@ createLogger LoggerConfig{..} backend = liftIO $ do
         , _loggerWorker = worker
         , _loggerThreshold = _loggerConfigThreshold
         , _loggerScope = _loggerConfigScope
-        , _loggerQueuePolicy = _loggerConfigQueuePolicy
+        , _loggerPolicy = _loggerConfigPolicy
         , _loggerMissed = missed
         }
 
@@ -690,28 +525,76 @@ withLogFunction
 withLogFunction config backend f = withLoggerCtx config backend $ f ∘ loggCtx
 
 -- -------------------------------------------------------------------------- --
--- Running computations with modified logger context
+-- Log Function
 
-withLogLabel
-    ∷ LogLabel
-    → LoggerCtx a
-    → (LoggerCtx a → α)
-    → α
-withLogLabel label ctx f = f $ loggerScope %~ (:) label $ ctx
+data LoggerException a
+    = QueueFullException (LogMessage a)
+    deriving (Show, Eq, Ord, Typeable, Generic)
 
-withLogLevel
-    ∷ LogLevel
-    → LoggerCtx a
-    → (LoggerCtx a → α)
-    → α
-withLogLevel level ctx f = f $ loggerThreshold .~ level $ ctx
+instance (Typeable a, Show a) ⇒ Exception (LoggerException a)
 
-withLogQueuePolicy
-    ∷ QueuePolicy
-    → LoggerCtx a
-    → (LoggerCtx a → α)
-    → α
-withLogQueuePolicy policy ctx f = f $ loggerQueuePolicy .~ policy $ ctx
+-- Log a message with the given logger context
+--
+-- If the logger context has been released (by closing the queue)
+-- this function has not effect.
+--
+loggCtx
+    ∷ (Show a, Typeable a, NFData a)
+    ⇒ LoggerCtx a
+    → LogFunctionIO a
+loggCtx LoggerCtx{..} level msg = do
+    case _loggerThreshold of
+        Quiet → return ()
+        threshold
+            | level ≤ threshold → liftIO ∘ atomically $
+                writeWithLogPolicy $!! LogMessage
+                    { _logMsg = msg
+                    , _logMsgLevel = level
+                    , _logMsgScope = _loggerScope
+                    }
+            | otherwise → return ()
+  where
+    writeWithLogPolicy lmsg
+        | _loggerPolicy ≡ LogPolicyBlock = writeTBMQueue _loggerQueue lmsg
+        | otherwise = tryWriteTBMQueue _loggerQueue lmsg >>= \case
+            Just False
+                | _loggerPolicy ≡ LogPolicyDiscard → modifyTVar' _loggerMissed succ
+                | _loggerPolicy ≡ LogPolicyRaise → throwSTM $ QueueFullException lmsg
+
+            _ → return ()
+{-# INLINEABLE loggCtx #-}
+
+-- -------------------------------------------------------------------------- --
+-- Logger Instance
+
+instance Logger (LoggerCtx a) a where
+    loggerFunIO = loggCtx
+    setLoggerLevel = loggerThreshold
+    setLoggerScope = loggerScope
+    setLoggerPolicy = loggerPolicy
+
+-- -------------------------------------------------------------------------- --
+-- MonadLog Instances
+
+instance (Show a, Typeable a, NFData a, MonadIO m) ⇒ MonadLog a (ReaderT (LoggerCtx a) m) where
+    logg l m = ask >>= \ctx → liftIO (loggCtx ctx l m)
+    withLevel level = local $ loggerThreshold .~ level
+    withLabel label = local $ loggerScope %~ (:) label
+    withPolicy policy = local $ loggerPolicy .~ policy
+
+    {-# INLINE logg #-}
+    {-# INLINE withLevel #-}
+    {-# INLINE withLabel #-}
+    {-# INLINE withPolicy #-}
+
+-- -------------------------------------------------------------------------- --
+-- LoggerT
+
+type LoggerT a = ReaderT (LoggerCtx a)
+
+runLoggerT ∷ LoggerCtx a → LoggerT a m α → m α
+runLoggerT = flip runReaderT
+{-# INLINE runLoggerT #-}
 
 -- -------------------------------------------------------------------------- --
 -- Logger Backend Implementation
@@ -773,140 +656,6 @@ handleLoggerBackend h colored eitherMsg = do
     inBlue ∷ T.Text → T.Text
     inBlue = inColor A.Dull A.Blue
 {-# INLINEABLE handleLoggerBackend #-}
-
--- -------------------------------------------------------------------------- --
--- Log Function
-
-data LoggerException a
-    = QueueFullException (LogMessage a)
-    deriving (Show, Eq, Ord, Typeable, Generic)
-
-instance (Typeable a, Show a) ⇒ Exception (LoggerException a)
-
--- Log a message with the given logger context
---
--- If the logger context has been released (by closing the queue)
--- this function has not effect.
---
-loggCtx
-    ∷ (Show a, Typeable a, NFData a)
-    ⇒ LoggerCtx a
-    → LogFunctionIO a
-loggCtx LoggerCtx{..} level msg = do
-    case _loggerThreshold of
-        Quiet → return ()
-        threshold
-            | level ≤ threshold → liftIO ∘ atomically $
-                writeWithQueuePolicy $!! LogMessage
-                    { _logMsg = msg
-                    , _logMsgLevel = level
-                    , _logMsgScope = _loggerScope
-                    }
-            | otherwise → return ()
-  where
-    writeWithQueuePolicy lmsg
-        | _loggerQueuePolicy ≡ QueuePolicyBlock = writeTBMQueue _loggerQueue lmsg
-        | otherwise = tryWriteTBMQueue _loggerQueue lmsg >>= \case
-            Just False
-                | _loggerQueuePolicy ≡ QueuePolicyDiscard → modifyTVar' _loggerMissed succ
-                | _loggerQueuePolicy ≡ QueuePolicyRaise → throwSTM $ QueueFullException lmsg
-
-            _ → return ()
-{-# INLINEABLE loggCtx #-}
-
--- -------------------------------------------------------------------------- --
--- MonadLog
-
-class Monad m ⇒ MonadLog a m | m → a where
-    logg ∷ LogFunction a m
-    withLevel ∷ LogLevel → m α → m α
-    withLabel ∷ LogLabel → m α → m α
-
-instance (Show a, Typeable a, NFData a, MonadIO m, MonadReader (LoggerCtx a) m) ⇒ MonadLog a m where
-    logg l m = ask >>= \ctx → liftIO (loggCtx ctx l m)
-    withLevel level = local $ loggerThreshold .~ level
-    withLabel label = local $ loggerScope %~ (:) label
-
-    {-# INLINE logg #-}
-    {-# INLINE withLevel #-}
-    {-# INLINE withLabel #-}
-
-instance (Show a, Typeable a, NFData a, MonadIO m) ⇒ MonadLog a (ReaderT (LoggerCtx a) m) where
-    logg l m = ask >>= \ctx → liftIO (loggCtx ctx l m)
-    withLevel level = local $ loggerThreshold .~ level
-    withLabel label = local $ loggerScope %~ (:) label
-
-    {-# INLINE logg #-}
-    {-# INLINE withLevel #-}
-    {-# INLINE withLabel #-}
-
-instance MonadLog a m ⇒ MonadLog a (ReaderT σ m) where
-    logg l = lift ∘ logg l
-    withLevel level inner = liftWith (\run → withLevel level (run inner)) >>= restoreT ∘ return
-    withLabel label inner = liftWith (\run → withLabel label (run inner)) >>= restoreT ∘ return
-
-    {-# INLINE logg #-}
-    {-# INLINE withLevel #-}
-    {-# INLINE withLabel #-}
-
-instance (MonadLog a m) ⇒ MonadLog a (ExceptT ε m) where
-    logg l = lift ∘ logg l
-    withLevel level inner = liftWith (\run → withLevel level (run inner)) >>= restoreT ∘ return
-    withLabel label inner = liftWith (\run → withLabel label (run inner)) >>= restoreT ∘ return
-
-    {-# INLINE logg #-}
-    {-# INLINE withLevel #-}
-    {-# INLINE withLabel #-}
-
-instance (MonadLog a m) ⇒ MonadLog a (StateT σ m) where
-    logg l = lift ∘ logg l
-    withLevel level inner = liftWith (\run → withLevel level (run inner)) >>= restoreT ∘ return
-    withLabel label inner = liftWith (\run → withLabel label (run inner)) >>= restoreT ∘ return
-
-    {-# INLINE logg #-}
-    {-# INLINE withLevel #-}
-    {-# INLINE withLabel #-}
-
-instance (MonadLog a m) ⇒ MonadLog a (TraceT t e m) where
-    logg l = lift ∘ logg l
-    withLevel level inner = liftWith (\run → withLevel level (run inner)) >>= restoreT ∘ return
-    withLabel label inner = liftWith (\run → withLabel label (run inner)) >>= restoreT ∘ return
-
-    {-# INLINE logg #-}
-    {-# INLINE withLevel #-}
-    {-# INLINE withLabel #-}
-
-instance (MonadLog a m) ⇒ MonadLog a (EitherT σ m) where
-    logg l = lift ∘ logg l
-    withLevel level inner = liftWith (\run → withLevel level (run inner)) >>= restoreT ∘ return
-    withLabel label inner = liftWith (\run → withLabel label (run inner)) >>= restoreT ∘ return
-
-    {-# INLINE logg #-}
-    {-# INLINE withLevel #-}
-    {-# INLINE withLabel #-}
-
-{-
--- Uses @OverlappingInstances@ to lift MonadLog in all transformers with an
--- instance for 'MonadTransControl'.
---
-instance (MonadLog a m, MonadTransControl t, Monad n, n ~ (t m)) ⇒ MonadLog a n where
-    logg l = lift ∘ logg l
-    withLevel level inner = liftWith (\run → withLevel level (run inner)) >>= restoreT ∘ return
-    withLabel label inner = liftWith (\run → withLabel label (run inner)) >>= restoreT ∘ return
-
-    {-# INLINE logg #-}
-    {-# INLINE withLevel #-}
-    {-# INLINE withLabel #-}
--}
-
--- -------------------------------------------------------------------------- --
--- LoggerT
-
-type LoggerT a = ReaderT (LoggerCtx a)
-
-runLoggerT ∷ LoggerCtx a → LoggerT a m α → m α
-runLoggerT = flip runReaderT
-{-# INLINE runLoggerT #-}
 
 -- -------------------------------------------------------------------------- --
 -- Tools

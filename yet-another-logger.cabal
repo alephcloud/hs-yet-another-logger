@@ -128,6 +128,7 @@ Library
         System.Logger
         System.Logger.ColorOption
         System.Logger.Internal
+        System.Logger.Types
 
     build-depends:
         async >= 2.0,
