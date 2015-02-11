@@ -126,7 +126,7 @@ Library
     exposed-modules:
         System.Logger
         System.Logger.ColorOption
-        System.Logger.Utils
+        System.Logger.Internal
 
     build-depends:
         async >= 2.0,

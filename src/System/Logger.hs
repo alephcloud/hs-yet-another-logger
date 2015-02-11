@@ -43,6 +43,7 @@
 
 module System.Logger
 ( withConsoleLogger
+, withFileLogger
 
 -- * Log-Level
 , LogLevel(..)
@@ -161,7 +162,7 @@ import System.IO
 -- internal modules
 
 import System.Logger.ColorOption
-import System.Logger.Utils
+import System.Logger.Internal
 
 -- -------------------------------------------------------------------------- --
 -- Convenient Logging to Console
@@ -191,6 +192,22 @@ withConsoleLogger level inner =
   where
     config = defaultLoggerConfig
         & loggerConfigThreshold .~ level
+
+withFileLogger
+    ∷ (MonadIO m, MonadBaseControl IO m)
+    ⇒ FilePath
+    → LogLevel
+    → (LoggerT T.Text m α)
+    → m α
+withFileLogger f level inner =
+    withHandleLoggerBackend (config ^. loggerConfigBackend) $ \backend →
+        withLoggerCtx config backend $ \loggerCtx →
+            runLoggerT loggerCtx inner
+  where
+    config = defaultLoggerConfig
+        & loggerConfigThreshold .~ level
+        & loggerConfigBackend ∘ loggerBackendConfigColor .~ ColorFalse
+        & loggerConfigBackend ∘ loggerBackendConfigHandle .~ FileHandle f
 
 -- -------------------------------------------------------------------------- --
 -- Log-Level
