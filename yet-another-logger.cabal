@@ -47,19 +47,19 @@ Description:
     .
     Writing a log message in a service application should introduce only
     minimal latency overhead in the thread where the log message is written.
-    Processing should be done asynchronously as much as possible.
-    This framework addresses this by doing all serialization through a formatting
+    Processing should be done asynchronously as much as possible. This
+    framework addresses this by doing all serialization through a formatting
     function that is a parameter of the back-end callback. A log message can be
-    any Haskell type with an 'NFData' constraint. Ideally the logged value is
-    computed anyways in the program so that constructing and forcing it does
-    not introduce any additional overhead. Log messages have a time-stamp that
-    is produced when the message is produced. This introduces overhead and
-    there is be room for optimizations here. A log message also has a
-    log-level. If the log-threshold that is effective at the time a log message
-    is written isn't met, no message is produced. A log message is
-    associated with a log-context which includes the currently effective
-    log-level threshold and a list of log-labels that are provided to the
-    formatting function.
+    any Haskell type with 'Show', 'Typeable', and 'NFData' constraint. Ideally
+    the logged value is computed anyways in the program so that constructing
+    and forcing it does not introduce any additional overhead. Log messages
+    have a time-stamp that is produced when the message is produced. This
+    introduces overhead and there is be room for optimizations here. A log
+    message also has a log-level. If the log-threshold that is effective at the
+    time a log message is written isn't met, no message is produced. A log
+    message is associated with a log-context which includes the currently
+    effective log-level threshold and a list of log-labels that are provided to
+    the formatting function.
     .
     The front-end delivers new log messages to the log queue. Further
     benchmarking should be done in chosen the queue implementation that is best
