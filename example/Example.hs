@@ -20,6 +20,7 @@ main ∷ IO ()
 main = withConsoleLogger Info $ do
     logg Info "moin"
     withLabel ("function", "f") f
+    logg Debug "don't show this"
     logg Info "tschüss"
  where
    f = withLevel Debug $ do

@@ -107,6 +107,7 @@ module System.Logger
 
 -- * Handle Logger Backend Implementation
 
+, withHandleLoggerBackend
 , handleLoggerBackend
 
 -- * MonadLog
@@ -183,11 +184,13 @@ withConsoleLogger
     ⇒ LogLevel
     → (LoggerT T.Text m α)
     → m α
-withConsoleLogger level = withLoggerCtx config backend ∘ flip runLoggerT
+withConsoleLogger level inner =
+    withHandleLoggerBackend (config ^. loggerConfigBackend) $ \backend →
+        withLoggerCtx config backend $ \loggerCtx →
+            runLoggerT loggerCtx inner
   where
     config = defaultLoggerConfig
         & loggerConfigThreshold .~ level
-    backend = handleLoggerBackend $ config ^. loggerConfigBackend
 
 -- -------------------------------------------------------------------------- --
 -- Log-Level
@@ -642,11 +645,12 @@ releaseLogger LoggerCtx{..} = liftIO $ do
 -- >     ⇒ LogLevel
 -- >     → (LoggerT T.Text m α)
 -- >     → m α
--- > withConsoleLogger level = withLoggerCtx config backend ∘ flip runLoggerT
--- >   where
--- >     config = defaultLoggerConfig
--- >         & loggerConfigThreshold .~ level
--- >     backend = handleLoggerBackend $ config ^. loggerConfigBackend
+-- > withConsoleLogger level = do
+-- >    backend ← mkHandleLoggerBackend $ config ^. loggerConfigBackend
+-- >    withLoggerCtx config backend ∘ flip runLoggerT
+-- >  where
+-- >    config = defaultLoggerConfig
+-- >        & loggerConfigThreshold .~ level
 --
 withLoggerCtx
     ∷ (MonadIO μ, MonadBaseControl IO μ)
@@ -695,13 +699,28 @@ withLogQueuePolicy policy ctx f = f $ loggerQueuePolicy .~ policy $ ctx
 -- -------------------------------------------------------------------------- --
 -- Logger Backend Implementation
 
+withHandleLoggerBackend
+    ∷ (MonadIO m, MonadBaseControl IO m)
+    ⇒ LoggerBackendConfig
+    → (LoggerBackend T.Text → m α)
+    → m α
+withHandleLoggerBackend conf inner =
+    case conf ^. loggerBackendConfigHandle of
+        StdErr → run stderr
+        StdOut → run stdout
+        FileHandle f → liftBaseOp (withFile f AppendMode) run
+  where
+    run h = do
+        colored ← liftIO $ useColor (conf ^. loggerBackendConfigColor) h
+        inner $ handleLoggerBackend h colored
+
 handleLoggerBackend
-    ∷ LoggerBackendConfig
+    ∷ Handle
+    → Bool
+        -- ^ whether to use ANSI color escape codes
     → LoggerBackend T.Text
-handleLoggerBackend conf eitherMsg = do
-    -- FIXME FIXME FIXME: don't do this for each message!
-    colored ← useColor $ conf ^. loggerBackendConfigColor stdout
-    T.putStrLn
+handleLoggerBackend h colored eitherMsg = do
+    T.hPutStrLn h
         $ inLevelColor colored ("[" ⊕ sshow level ⊕ "] ")
         ⊕ inScopeColor colored ("[" ⊕ formatedScope ⊕ "] ")
         ⊕ (msg ^. logMsg)
