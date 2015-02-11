@@ -80,16 +80,17 @@ messages according to the needs of the respective back-end.
 Delaying the serialization to the very end of the processing pipeline has
 the following advantages:
 
-1.  Serialization is done asynchronously,
-2.  it is done only for messages that are actually delivered and is done
-    only for those parts of the message that are relevant for the
+1.  serialization is done asynchronously,
+2.  serialization is done only for messages that are actually delivered and
+    it is done only for those parts of the message that are relevant for the
     respective back-end, and
 3.  it is easy to deploy different serialization methods.
 
 For instance when logging to the console one usually wants a line-wise
-UNIX- tool friendly format. For a cloud services one may chose an efficient
+UNIX-tool friendly format. For a cloud service one may chose an efficient
 binary serialization with a back-end that stores messages in a remote database.
 There may be circumstances where the data of all or some messages is just
-aggregated for statistical analysis before the messages are discarded. With the
-module design producing log messages is independent from processing log
-messages.
+aggregated for statistical analysis before the messages are discarded. The
+modular design that decouples generation and serialization of log messages
+allows to accommodate to these different scenarios by just passing a different
+formatting function to the back-end.

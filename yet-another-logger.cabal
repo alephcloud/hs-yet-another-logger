@@ -86,12 +86,13 @@ Description:
     3. it is easy to deploy different serialization methods.
     .
     For instance when logging to the console one usually wants a line-wise
-    UNIX- tool friendly format. For a cloud services one may chose an efficient
+    UNIX-tool friendly format. For a cloud service one may chose an efficient
     binary serialization with a back-end that stores messages in a remote database.
     There may be circumstances where the data of all or some messages is just
-    aggregated for statistical analysis before the messages are discarded. With the
-    module design producing log messages is independent from processing log
-    messages.
+    aggregated for statistical analysis before the messages are discarded. The
+    modular design that decouples generation and serialization of log messages
+    allows to accommodate to these different scenarios by just passing a different
+    formatting function to the back-end.
 
 Homepage: https://github.com/alephcloud/hs-yet-another-logger
 License: Apache-2.0
