@@ -108,6 +108,7 @@ import Control.Exception.Enclosed
 import Control.Lens hiding ((.=))
 import Control.Monad.Except
 import Control.Monad.Trans.Control
+import Control.Monad.Unicode
 
 import qualified Data.CaseInsensitive as CI
 import qualified Data.List as L
@@ -392,11 +393,11 @@ backendWorker backend queue missed = async $ go `catchAny` \e → do
     (backend ∘ Left $ backendErrorMsg (sshow e)) `catchAny` (const $ return ())
     go
   where
-    go = atomically readMsg >>= \case
+    go = atomically readMsg ≫= \case
         -- when the queue is closed and empty the backendWorker returns
         Nothing → return ()
         -- When there are still messages to process the backendWorker loops
-        Just msg → backend msg >> go
+        Just msg → backend msg ≫ go
 
     -- As long as the queue is not closed and empty this retries until
     -- a new message arrives
@@ -499,7 +500,7 @@ loggCtx Logger{..} level msg = do
   where
     writeWithLogPolicy lmsg
         | _loggerPolicy ≡ LogPolicyBlock = writeTBMQueue _loggerQueue lmsg
-        | otherwise = tryWriteTBMQueue _loggerQueue lmsg >>= \case
+        | otherwise = tryWriteTBMQueue _loggerQueue lmsg ≫= \case
             Just False
                 | _loggerPolicy ≡ LogPolicyDiscard → modifyTVar' _loggerMissed succ
                 | _loggerPolicy ≡ LogPolicyRaise → throwSTM $ QueueFullException lmsg
