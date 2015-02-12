@@ -1,7 +1,6 @@
 [![Build Status](https://travis-ci.org/alephcloud/hs-yet-another-logger.svg)](https://travis-ci.org/alephcloud/hs-yet-another-logger)
 
-A logging framework that was written with flexibility and performance
-in mind.
+A logging framework written with flexibility and performance in mind.
 
 Quick Start
 ===========
@@ -40,12 +39,11 @@ The logging system consists of four main parts:
    each log messages. The logger back-end applies the formatting function
    and delivers the log messages to some sink.
 
-The framework allows to combine this components in a modular way. The
-front-end types, the `Logger`, and the back-end callback are represented
-by types or type classes. The formatter exists only as a concept
-in the implementation of back-ends. These types and concepts together
-form the abstract logger interface that is defined in the module
-`System.Logger.Types`.
+The framework allows you to combine this components in a modular way. The
+front-end types, the `Logger`, and the back-end callback are represented by
+types or type classes. The formatter exists only as a concept in the
+implementation of back-ends. These types and concepts together form the
+abstract logger interface that is defined in the module `System.Logger.Types`.
 
 The package also provides a concrete Logger that implements these components
 in the module `System.Logger.Logger` and `System.Logger.Backend.Handle`.
@@ -59,7 +57,7 @@ should be done asynchronously as much as possible. This framework addresses
 this by doing all serialization and IO in an asynchronous logger back-end
 callback.
 
-When a Log message is produced it is associated with a logger context. The
+When a log message is produced it is associated with a logger context. The
 logger context includes
 
 *   a log-level threshold,
@@ -82,10 +80,10 @@ done in chosen the queue implementation that is best suited for this purpose.
 
 The logger asynchronously reads log messages from the queue and calls the
 back-end callback for each message. Right now the code includes only a single
-back-end, namely for writing to a handle, but we are going to add more back-ends
-soon. Due to the modular design it is possible to combine different back-ends
-into a single back-end so that messages are processed by more than a single
-back-end and delivered to more than a single sink.
+back-end, namely for writing to a handle, but we are going to add more
+back-ends soon. Due to the modular design, it is possible to combine different
+back-ends into a single back-end so that messages are processed by more than a
+single back-end and delivered to more than a single sink.
 
 A back-end includes a formatting function. This is where, beside IO, most
 processing happens.
@@ -99,12 +97,12 @@ the following advantages:
     respective back-end, and
 3.  it is easy to deploy different serialization methods.
 
-For instance when logging to the console one usually wants a line-wise
+For instance, when logging to the console, one usually wants a line-wise
 UNIX-tool friendly format. For a cloud service one may chose an efficient
 binary serialization with a back-end that stores messages in a remote database.
 There may be circumstances where the data of all or some messages is just
 aggregated for statistical analysis before the messages are discarded. The
-modular design that decouples generation and serialization of log messages
-allows to accommodate these different scenarios by just using different
+modular design, which decouples generation and serialization of log messages,
+allows one to accommodate these different scenarios by just using different
 back-ends, possibly parameterized by the formatting function.
 

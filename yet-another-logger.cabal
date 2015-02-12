@@ -2,7 +2,7 @@ Name: yet-another-logger
 Version: 0.0.1
 Synopsis: Yet Another Logger
 Description:
-    A logging framework that was written with flexibility and performance
+    A logging framework written with flexibility and performance
     in mind.
     .
     = Quick Start
