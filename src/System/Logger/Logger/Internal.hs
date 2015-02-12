@@ -113,7 +113,6 @@ import Control.Monad.Unicode
 
 import qualified Data.CaseInsensitive as CI
 import qualified Data.List as L
-import Data.Monoid
 import Data.Monoid.Unicode
 import Data.String
 import qualified Data.Text as T
