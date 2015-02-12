@@ -40,12 +40,12 @@ Description:
     .
     The framework allows to combine this components in a modular way. The
     front-end types, the 'Logger', and the back-end callback are represented
-    represented by types or type classes. The formatter exists only as a concept
+    by types or type classes. The formatter exists only as a concept
     in the implementation of back-ends. These types and concepts together
     form the abstract logger interface that is defined in the module
     "System.Logger.Types".
     .
-    This package also provides a concrete Logger that implements these components
+    The package also provides a concrete Logger that implements these components
     in the module "System.Logger.Logger".
 
 Homepage: https://github.com/alephcloud/hs-yet-another-logger
