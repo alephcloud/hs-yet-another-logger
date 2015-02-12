@@ -129,6 +129,7 @@ Library
         System.Logger.ColorOption
         System.Logger.Internal
         System.Logger.Logger
+        System.Logger.Logger.Internal
         System.Logger.Types
 
     build-depends:
