@@ -53,9 +53,9 @@ module System.Logger.Logger
 -- * Re-Export Logger Interface
   module System.Logger.Types
 
--- * Logger Context
-, LoggerCtx
-, withLoggerCtx
+-- * Logger
+, Logger
+, withLogger
 , withLogFunction
 
 -- * Handle Logger Backend Implementation

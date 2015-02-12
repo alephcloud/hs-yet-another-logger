@@ -25,6 +25,7 @@
 -- Stability: experimental
 --
 
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -67,11 +68,14 @@ module System.Logger.Types
 , LogFunction
 , LogFunctionIO
 
--- * Logger
-, Logger(..)
+-- * LoggerCtx
+, LoggerCtx(..)
+, LoggerCtxT
+, runLoggerCtxT
 
 -- * MonadLog
 , MonadLog(..)
+
 ) where
 
 import Configuration.Utils hiding (Lens', Error)
@@ -84,6 +88,7 @@ import Control.Monad.Trans.Control
 import Control.Monad.Trans.Either
 import Control.Monad.Trans.State
 import Control.Monad.Trans.Trace
+import Control.Monad.Trans.Writer
 
 import qualified Data.CaseInsensitive as CI
 import Data.Monoid
@@ -256,59 +261,6 @@ type LogFunctionIO a = LogLevel → a → IO ()
 type LogFunction a m = LogLevel → a → m ()
 
 -- -------------------------------------------------------------------------- --
--- Monad Logger
-
--- | Abstraction of a logger context that can be used without dependening on
--- a specific monadic context.
---
--- The 'loggerFunIO' incorporates a 'LoggerBackend'. An instance of a 'Logger'
--- is free to use a hard coded 'LoggerBackend' or to be usable with different
--- 'LoggerBackend' functions. The latter is recommended but not required.
---
--- You don't have to provide an instance of this for your logger. Instead you
--- may just provide an instance of 'MonadLog' directly. However, if you do
--- provide an instance of 'Logger' you must provide the following 'MonadLog'
--- instance for your type:
---
--- > -- Replace CTX with your logger type!
--- >
--- > instance (Show a, Typeable a, NFData a, MonadIO m) ⇒ MonadLog a (ReaderT CTX m) where
--- >     logg l m = ask >>= \ctx → liftIO (loggerFunIO ctx l m)
--- >     withLevel level = local $ setLoggerThreshold .~ level
--- >     withLabel label = local $ setLoggerScope %~ (:) label
--- >     withPolicy policy = local $ setLoggerPolicy .~ policy
--- >
--- >     {-# INLINE logg #-}
--- >     {-# INLINE withLevel #-}
--- >     {-# INLINE withLabel #-}
--- >     {-# INLINE withPolicy #-}
---
--- If this doesn't fit your needs you may use a newtype wrapper and define
--- your own instances.
---
-class Logger ctx msg | ctx → msg where
-    loggerFunIO
-        ∷ (Show msg, Typeable msg, NFData msg)
-        ⇒ ctx
-        → LogFunctionIO msg
-
-    setLoggerLevel ∷ Setter' ctx LogLevel
-    setLoggerScope ∷ Setter' ctx LogScope
-    setLoggerPolicy ∷ Setter' ctx LogPolicy
-
-    withLoggerLevel ∷ LogLevel → ctx → (ctx → α) → α
-    withLoggerLevel level ctx f = f $ ctx & setLoggerLevel .~ level
-    {-# INLINE withLoggerLevel #-}
-
-    withLoggerLabel ∷ LogLabel → ctx → (ctx → α) → α
-    withLoggerLabel label ctx f = f $ ctx & setLoggerScope %~ (:) label
-    {-# INLINE withLoggerLabel #-}
-
-    withLoggerPolicy ∷ LogPolicy → ctx → (ctx → α) → α
-    withLoggerPolicy policy ctx f = f $ ctx & setLoggerPolicy .~ policy
-    {-# INLINE withLoggerPolicy #-}
-
--- -------------------------------------------------------------------------- --
 -- MonadLog
 
 class Monad m ⇒ MonadLog a m | m → a where
@@ -317,7 +269,8 @@ class Monad m ⇒ MonadLog a m | m → a where
     withLabel ∷ LogLabel → m α → m α
     withPolicy ∷ LogPolicy → m α → m α
 
-instance (Show a, Typeable a, NFData a, MonadIO m, Logger ctx a, MonadReader ctx m) ⇒ MonadLog a m where
+-- Not sure if this instance is a good idea
+instance (Show a, Typeable a, NFData a, MonadIO m, LoggerCtx ctx a, MonadReader ctx m) ⇒ MonadLog a m where
     logg l m = ask >>= \ctx → liftIO (loggerFunIO ctx l m)
     withLevel level = local $ setLoggerLevel .~ level
     withLabel label = local $ setLoggerScope %~ (:) label
@@ -328,22 +281,19 @@ instance (Show a, Typeable a, NFData a, MonadIO m, Logger ctx a, MonadReader ctx
     {-# INLINE withLabel #-}
     {-# INLINE withPolicy #-}
 
-{- We'd like to provide this instance, but it would overlap with the unconstraint
-- instance for 'ReaderT'. Is there anything we could do about it?
--
-instance (Show a, Typeable a, NFData a, MonadIO m, Logger ctx a) ⇒ MonadLog a (ReaderT ctx m) where
-    logg l m = ask >>= \ctx → liftIO (loggerFunIO ctx l m)
-    withLevel level inner = ask >>= \ctx → withLoggerLevel level ctx inner
-    withLabel label inner = ask >>= \ctx → withLoggerLabel label ctx inner
-    withPolicy policy inner = ask >>= \ctx → withLoggerPolicy policy ctx inner
+-- Not sure if this instance is a good idea
+instance MonadLog a m ⇒ MonadLog a (ReaderT σ m) where
+    logg l = lift ∘ logg l
+    withLevel level inner = liftWith (\run → withLevel level (run inner)) >>= restoreT ∘ return
+    withLabel label inner = liftWith (\run → withLabel label (run inner)) >>= restoreT ∘ return
+    withPolicy policy inner = liftWith (\run → withPolicy policy (run inner)) >>= restoreT ∘ return
 
     {-# INLINE logg #-}
     {-# INLINE withLevel #-}
     {-# INLINE withLabel #-}
     {-# INLINE withPolicy #-}
--}
 
-instance MonadLog a m ⇒ MonadLog a (ReaderT σ m) where
+instance (Monoid σ, MonadLog a m) ⇒ MonadLog a (WriterT σ m) where
     logg l = lift ∘ logg l
     withLevel level inner = liftWith (\run → withLevel level (run inner)) >>= restoreT ∘ return
     withLabel label inner = liftWith (\run → withLabel label (run inner)) >>= restoreT ∘ return
@@ -402,7 +352,7 @@ instance (MonadLog a m) ⇒ MonadLog a (EitherT σ m) where
 -- Uses @OverlappingInstances@ to lift MonadLog in all transformers with an
 -- instance for 'MonadTransControl'.
 --
--- It would be really, really cool if this would work
+-- It would be really cool if this would work
 --
 instance (MonadLog a m, MonadTransControl t, Monad n, n ~ (t m)) ⇒ MonadLog a n where
     logg l = lift ∘ logg l
@@ -415,4 +365,62 @@ instance (MonadLog a m, MonadTransControl t, Monad n, n ~ (t m)) ⇒ MonadLog a 
     {-# INLINE withLabel #-}
     {-# INLINE withPolicy #-}
 -}
+
+-- -------------------------------------------------------------------------- --
+-- Logger Context
+
+-- | Abstraction of a logger context that can be used without dependening on
+-- a specific monadic context.
+--
+-- The 'loggerFunIO' incorporates a 'LoggerBackend'. An instance of a 'LoggerCtx'
+-- is free to use a hard coded 'LoggerBackend' or to be usable with different
+-- 'LoggerBackend' functions. The latter is recommended but not required.
+--
+-- You don't have to provide an instance of this for your logger. Instead you
+-- may just provide an instance of 'MonadLog' directly.
+--
+-- If this doesn't fit your needs you may use a newtype wrapper and define
+-- your own instances.
+--
+class LoggerCtx ctx msg | ctx → msg where
+    loggerFunIO
+        ∷ (Show msg, Typeable msg, NFData msg)
+        ⇒ ctx
+        → LogFunctionIO msg
+
+    setLoggerLevel ∷ Setter' ctx LogLevel
+    setLoggerScope ∷ Setter' ctx LogScope
+    setLoggerPolicy ∷ Setter' ctx LogPolicy
+
+    withLoggerLevel ∷ LogLevel → ctx → (ctx → α) → α
+    withLoggerLevel level ctx f = f $ ctx & setLoggerLevel .~ level
+    {-# INLINE withLoggerLevel #-}
+
+    withLoggerLabel ∷ LogLabel → ctx → (ctx → α) → α
+    withLoggerLabel label ctx f = f $ ctx & setLoggerScope %~ (:) label
+    {-# INLINE withLoggerLabel #-}
+
+    withLoggerPolicy ∷ LogPolicy → ctx → (ctx → α) → α
+    withLoggerPolicy policy ctx f = f $ ctx & setLoggerPolicy .~ policy
+    {-# INLINE withLoggerPolicy #-}
+
+newtype LoggerCtxT ctx m α = LoggerCtxT (ReaderT ctx m α)
+    deriving (Functor, Applicative, Monad, MonadIO, MonadTrans, MonadReader ctx)
+
+runLoggerCtxT
+    ∷ LoggerCtxT ctx m α
+    → ctx
+    → m α
+runLoggerCtxT (LoggerCtxT a) = runReaderT a
+
+instance (Show a, Typeable a, NFData a, MonadIO m, LoggerCtx ctx a) ⇒ MonadLog a (LoggerCtxT ctx m) where
+    logg l m = ask >>= \ctx → liftIO (loggerFunIO ctx l m)
+    withLevel level = local $ setLoggerLevel .~ level
+    withLabel label = local $ setLoggerScope %~ (:) label
+    withPolicy policy = local $ setLoggerPolicy .~ policy
+
+    {-# INLINE logg #-}
+    {-# INLINE withLevel #-}
+    {-# INLINE withLabel #-}
+    {-# INLINE withPolicy #-}
 

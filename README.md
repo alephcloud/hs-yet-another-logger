@@ -31,7 +31,7 @@ The logging system consists of four main parts:
    type, the `LogPolicy` type, the `LogLabel` and `LogScope` types,
    the `LogFunction` type, and the `MonadLog` type class.
 
-2. The abstract `Logger` is the context through which the `LogFunction`
+2. The abstract `LoggerCtx` is the context through which the `LogFunction`
    delivers log messages to the logger back-end.
 
 3. The formatter is a function for serializing log messages.
