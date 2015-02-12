@@ -203,7 +203,7 @@ type LogScope = [LogLabel]
 
 -- | The Internal log message type.
 --
--- The type parameter 'a' is expected to provide intances
+-- The type parameter @a@ is expected to provide intances
 -- of 'Show', 'Typeable', and 'NFData'.
 --
 -- If we need to support different backends, we may consider
@@ -233,11 +233,11 @@ instance NFData a ⇒ NFData (LogMessage a)
 -- | This is given to logger when it is created. It formats and delivers
 -- individual log messages synchronously.
 --
--- The type parameter 'a' is expected to provide instances for 'Show'
+-- The type parameter @a@ is expected to provide instances for 'Show'
 -- 'Typeable', and 'NFData'.
 --
 -- The 'Left' values of the argument allows the generation of log messages
--- that are independent of the parameter 'a'. The motivation for this is
+-- that are independent of the parameter @a@. The motivation for this is
 -- reporting issues in Logging system itself, like a full logger queue
 -- or providing statistics about the fill level of the queue. There may
 -- be other uses of this, too.
