@@ -16,12 +16,6 @@
 -- License for the specific language governing permissions and limitations
 -- under the License.
 
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE UnicodeSyntax #-}
-
 -- |
 -- Module: System.Logger
 -- Description: Yet Another Logger
@@ -33,6 +27,13 @@
 -- This module re-exports the logger interface from "System.Logger.Types" and
 -- the implementation of that interface from "System.Logger.Logger".
 --
+
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE UnicodeSyntax #-}
+
 module System.Logger
 ( withConsoleLogger
 , withFileLogger
