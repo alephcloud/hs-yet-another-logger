@@ -77,8 +77,7 @@ withConsoleLogger
     → m α
 withConsoleLogger level inner =
     withHandleLoggerBackend (config ^. loggerConfigBackend) $ \backend →
-        withLoggerCtx config backend $ \loggerCtx →
-            runLoggerT loggerCtx inner
+        withLogger config backend $ runLoggerT inner
   where
     config = defaultLoggerConfig
         & loggerConfigThreshold .~ level
@@ -93,8 +92,7 @@ withFileLogger
     → m α
 withFileLogger f level inner =
     withHandleLoggerBackend (config ^. loggerConfigBackend) $ \backend →
-        withLoggerCtx config backend $ \loggerCtx →
-            runLoggerT loggerCtx inner
+        withLogger config backend $ runLoggerT inner
   where
     config = defaultLoggerConfig
         & loggerConfigThreshold .~ level

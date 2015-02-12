@@ -74,13 +74,13 @@ module System.Logger.Logger.Internal
 , validateLoggerBackendConfig
 , pLoggerBackendConfig
 
--- ** Logger Context
-, LoggerCtx
+-- * Logger
+, Logger
 , loggerScope
 , loggerThreshold
 , createLogger
 , releaseLogger
-, withLoggerCtx
+, withLogger
 , loggCtx
 , withLogFunction
 
@@ -107,7 +107,6 @@ import Control.Exception.Lifted
 import Control.Exception.Enclosed
 import Control.Lens hiding ((.=))
 import Control.Monad.Except
-import Control.Monad.Reader
 import Control.Monad.Trans.Control
 import Control.Monad.Unicode
 
@@ -323,7 +322,7 @@ pLoggerBackendConfig = id
 --
 type LoggerQueue a = TBMQueue (LogMessage a)
 
-data LoggerCtx a = LoggerCtx
+data Logger a = Logger
     { _loggerQueue ∷ !(LoggerQueue a)
     , _loggerWorker ∷ !(Async ())
     , _loggerThreshold ∷ !LogLevel
@@ -333,27 +332,27 @@ data LoggerCtx a = LoggerCtx
     }
     deriving (Typeable, Generic)
 
-loggerQueue ∷ Lens' (LoggerCtx a) (LoggerQueue a)
+loggerQueue ∷ Lens' (Logger a) (LoggerQueue a)
 loggerQueue = lens _loggerQueue $ \a b → a { _loggerQueue = b }
 {-# INLINE loggerQueue #-}
 
-loggerWorker ∷ Lens' (LoggerCtx a) (Async ())
+loggerWorker ∷ Lens' (Logger a) (Async ())
 loggerWorker = lens _loggerWorker $ \a b → a { _loggerWorker = b }
 {-# INLINE loggerWorker #-}
 
-loggerThreshold ∷ Lens' (LoggerCtx a) LogLevel
+loggerThreshold ∷ Lens' (Logger a) LogLevel
 loggerThreshold = lens _loggerThreshold $ \a b → a { _loggerThreshold = b }
 {-# INLINE loggerThreshold #-}
 
-loggerScope ∷ Lens' (LoggerCtx a) LogScope
+loggerScope ∷ Lens' (Logger a) LogScope
 loggerScope = lens _loggerScope $ \a b → a { _loggerScope = b }
 {-# INLINE loggerScope #-}
 
-loggerPolicy ∷ Lens' (LoggerCtx a) LogPolicy
+loggerPolicy ∷ Lens' (Logger a) LogPolicy
 loggerPolicy = lens _loggerPolicy $ \a b → a { _loggerPolicy = b }
 {-# INLINE loggerPolicy #-}
 
-loggerMissed ∷ Lens' (LoggerCtx a) (TVar Int)
+loggerMissed ∷ Lens' (Logger a) (TVar Int)
 loggerMissed = lens _loggerMissed $ \a b → a { _loggerMissed = b }
 {-# INLINE loggerMissed #-}
 
@@ -361,12 +360,12 @@ createLogger
     ∷ MonadIO μ
     ⇒ LoggerConfig
     → LoggerBackend a
-    → μ (LoggerCtx a)
+    → μ (Logger a)
 createLogger LoggerConfig{..} backend = liftIO $ do
     queue ← newTBMQueueIO _loggerConfigQueueSize
     missed ← newTVarIO 0
     worker ← backendWorker backend queue missed
-    return $ LoggerCtx
+    return $ Logger
         { _loggerQueue = queue
         , _loggerWorker = worker
         , _loggerThreshold = _loggerConfigThreshold
@@ -426,13 +425,13 @@ backendWorker backend queue missed = async $ go `catchAny` \e → do
 
 releaseLogger
     ∷ MonadIO μ
-    ⇒ LoggerCtx a
+    ⇒ Logger a
     → μ ()
-releaseLogger LoggerCtx{..} = liftIO $ do
+releaseLogger Logger{..} = liftIO $ do
     atomically $ closeTBMQueue _loggerQueue
     wait _loggerWorker
 
--- | Provide a computation with a 'LoggerContext'.
+-- | Provide a computation with a 'Logger'.
 --
 -- Here is an example how this can be used to run a computation
 -- with a 'MonadLog' constraint:
@@ -444,18 +443,18 @@ releaseLogger LoggerCtx{..} = liftIO $ do
 -- >     → m α
 -- > withConsoleLogger level = do
 -- >     backend ← mkHandleLoggerBackend $ config ^. loggerConfigBackend
--- >     withLoggerCtx config backend ∘ flip runLoggerT
+-- >     withLogger config backend ∘ flip runLoggerT
 -- >   where
 -- >     config = defaultLoggerConfig
 -- >         & loggerConfigThreshold .~ level
 --
-withLoggerCtx
+withLogger
     ∷ (MonadIO μ, MonadBaseControl IO μ)
     ⇒ LoggerConfig
     → LoggerBackend a
-    → (LoggerCtx a → μ α)
+    → (Logger a → μ α)
     → μ α
-withLoggerCtx config backend =
+withLogger config backend =
         bracket (createLogger config backend) releaseLogger
 
 -- | For simple cases, when the logger threshold and the logger scope is
@@ -467,7 +466,7 @@ withLogFunction
     → LoggerBackend a
     → (LogFunctionIO a → μ α)
     → μ α
-withLogFunction config backend f = withLoggerCtx config backend $ f ∘ loggCtx
+withLogFunction config backend f = withLogger config backend $ f ∘ loggCtx
 
 -- -------------------------------------------------------------------------- --
 -- Log Function
@@ -485,9 +484,9 @@ instance (Typeable a, Show a) ⇒ Exception (LoggerException a)
 --
 loggCtx
     ∷ (Show a, Typeable a, NFData a)
-    ⇒ LoggerCtx a
+    ⇒ Logger a
     → LogFunctionIO a
-loggCtx LoggerCtx{..} level msg = do
+loggCtx Logger{..} level msg = do
     case _loggerThreshold of
         Quiet → return ()
         threshold
@@ -512,37 +511,23 @@ loggCtx LoggerCtx{..} level msg = do
 -- -------------------------------------------------------------------------- --
 -- Logger Instance
 
-instance Logger (LoggerCtx a) a where
+instance LoggerCtx (Logger a) a where
     loggerFunIO = loggCtx
     setLoggerLevel = loggerThreshold
     setLoggerScope = loggerScope
     setLoggerPolicy = loggerPolicy
 
 -- -------------------------------------------------------------------------- --
--- MonadLog Instances
-
-instance (Show a, Typeable a, NFData a, MonadIO m) ⇒ MonadLog a (ReaderT (LoggerCtx a) m) where
-    logg l m = ask ≫= \ctx → liftIO (loggCtx ctx l m)
-    withLevel level = local $ loggerThreshold .~ level
-    withLabel label = local $ loggerScope %~ (:) label
-    withPolicy policy = local $ loggerPolicy .~ policy
-
-    {-# INLINE logg #-}
-    {-# INLINE withLevel #-}
-    {-# INLINE withLabel #-}
-    {-# INLINE withPolicy #-}
-
--- -------------------------------------------------------------------------- --
 -- LoggerT
 
-type LoggerT a = ReaderT (LoggerCtx a)
+type LoggerT a = LoggerCtxT (Logger a)
 
-runLoggerT ∷ LoggerCtx a → LoggerT a m α → m α
-runLoggerT = flip runReaderT
+runLoggerT ∷ LoggerT a m α → Logger a → m α
+runLoggerT = runLoggerCtxT
 {-# INLINE runLoggerT #-}
 
 -- | Convenience function that unwraps a 'MonadLog' computation over
--- a newly created 'LoggerCtx'
+-- a newly created 'Logger'
 --
 runLogT
     ∷ (MonadBaseControl IO m, MonadIO m)
@@ -550,7 +535,7 @@ runLogT
     → LoggerBackend msg
     → LoggerT msg m α
     → m α
-runLogT config backend = withLoggerCtx config backend ∘ flip runLoggerT
+runLogT config backend = withLogger config backend ∘ runLoggerT
 
 -- -------------------------------------------------------------------------- --
 -- Logger Backend Implementation

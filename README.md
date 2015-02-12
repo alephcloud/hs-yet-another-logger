@@ -19,63 +19,76 @@ main = withConsoleLogger Info $ do
         logg Debug "debug f"
 ```
 
-Description
-===========
+Overview
+========
 
 **This Version is yet a preview**
 
-The framework consists of four main parts:
+The logging system consists of four main parts:
 
-1.  The logging front-end are those types and functions that are used
-    to produce log messages in the code. This includes the `LogLevel`
-    type, the `LogFunction`, the abstract `LoggerCtx`, and the `MonadLog`
-    type class along with a monad transformer instance.
+1. The logging front-end are those types and functions that are used
+   to produce log messages in the code. This includes the `LogLevel`
+   type, the `LogPolicy` type, the `LogLabel` and `LogScope` types,
+   the `LogFunction` type, and the `MonadLog` type class.
 
-2.  The logger queue is a channel into which the `LogFunction` delivers
-    log messages. The log processor is a background worker that consumes
-    log messages from the queue and delivers them to the back-end.
+2. The abstract `LoggerCtx` is the context through which the `LogFunction`
+   delivers log messages to the logger back-end.
 
-3.  The formatter is a function that takes log message and serializes
-    it to the format that is expected by a back-end.
+3. The formatter is a function for serializing log messages.
 
-4.   The logger back-end is a callback that is invoked by the log processor.
-    The logger back-end applies a log message formatting function and
-    delivers the log messages to some sink.
+4. The logger back-end is a callback that is invoked by `Logger` on
+   each log messages. The logger back-end applies the formatting function
+   and delivers the log messages to some sink.
 
-This parts are described by function signatures and can thus be developed
-and combined in a modular way.
+The framework allows to combine this components in a modular way. The
+front-end types, the `Logger`, and the back-end callback are represented
+represented by types or type classes. The formatter exists only as a concept
+in the implementation of back-ends. These types and concepts together
+form the abstract logger interface that is defined in the module
+`System.Logger.Types`.
 
-This package provides the default implementations of these components.
+This package also provides a concrete Logger that implements these components
+in the module `System.Logger.Logger`.
 
-Writing a log message in a service application should introduce only
-minimal latency overhead in the thread where the log message is written.
-Processing should be done asynchronously as much as possible.
-This framework addresses this by doing all serialization through a formatting
-function that is a parameter of the back-end callback. A log message can be
-any Haskell type with `Show`, `Typeable`, and `NFData` constraint. Ideally the
-logged value is computed anyways in the program so that constructing and
-forcing it does not introduce any additional overhead. Log messages have a
-time-stamp that is produced when the message is produced. This introduces
+Logger Implementation
+=====================
+
+Writing a log message in a service application should introduce only minimal
+latency overhead in the thread where the log message is written. Processing
+should be done asynchronously as much as possible. This framework addresses
+this by doing all serialization and IO in an asynchronous logger back-end
+callback.
+
+When a Log message is produced it is associated with a logger context. The
+logger context includes
+
+*   a log-level threshold,
+*   a scope, which is a list of key-value labels which are used to
+    tag log messages with additional information, and
+*   a policy that specifies how to deal with a situation where the
+    log message pipeline is congested.
+
+A log message can be any Haskell type with `Show`, `Typeable`, and `NFData`
+constraint. Ideally the logged value is computed anyways in the program so that
+constructing and forcing it does not introduce any additional overhead.
+
+When a log messages is produced it is tagged with a time stamp. This introduces
 overhead and there is be room for optimizations here. A log message also has a
 log-level. If the log-threshold that is effective at the time a log message is
-written isn't met, no message is produced. A log message is associated with a
-log-context which includes the currently effective log-level threshold and a
-list of log-labels that are provided to the formatting function.
+written isn't met, no message is produced.
 
-The front-end delivers new log messages to the log queue. Further
-benchmarking should be done in chosen the queue implementation that is best
-suited for this purpose.
+The logger has an internal log message queue. Further benchmarking should be
+done in chosen the queue implementation that is best suited for this purpose.
 
-The log processor asynchronously reads log messages from
-the queue and calls the back-end callback for each message. Right now the
-code includes only a single back-end, namely for writing to a handle, but we
-are going to add more back-end soon. Due to the modular design it is possible
-to deliver to combine different back-ends into a single back-end so that
-messages are processed by more than a single back-end.
+The logger asynchronously reads log messages from the queue and calls the
+back-end callback for each message. Right now the code includes only a single
+back-end, namely for writing to a handle, but we are going to add more back-ends
+soon. Due to the modular design it is possible to combine different back-ends
+into a single back-end so that messages are processed by more than a single
+back-end and delivered to more than a single sink.
 
-A back-end is parameterized with a formatting function. This is where, beside
-IO, most processing happens. The formatting function serializes log
-messages according to the needs of the respective back-end.
+A back-end includes a formatting function. This is where, beside IO, most
+processing happens.
 
 Delaying the serialization to the very end of the processing pipeline has
 the following advantages:
@@ -92,5 +105,6 @@ binary serialization with a back-end that stores messages in a remote database.
 There may be circumstances where the data of all or some messages is just
 aggregated for statistical analysis before the messages are discarded. The
 modular design that decouples generation and serialization of log messages
-allows to accommodate to these different scenarios by just passing a different
-formatting function to the back-end.
+allows to accommodate these different scenarios by just using different
+back-ends, possibly parameterized by the formatting function.
+
