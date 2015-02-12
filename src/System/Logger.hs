@@ -54,7 +54,7 @@ import System.Logger.ColorOption
 withConsoleLogger
     ∷ (MonadIO m, MonadBaseControl IO m)
     ⇒ LogLevel
-    → (LoggerT T.Text m α)
+    → LoggerT T.Text m α
     → m α
 withConsoleLogger level inner =
     withHandleLoggerBackend (config ^. loggerConfigBackend) $ \backend →
@@ -70,7 +70,7 @@ withFileLogger
     ∷ (MonadIO m, MonadBaseControl IO m)
     ⇒ FilePath
     → LogLevel
-    → (LoggerT T.Text m α)
+    → LoggerT T.Text m α
     → m α
 withFileLogger f level inner =
     withHandleLoggerBackend (config ^. loggerConfigBackend) $ \backend →
