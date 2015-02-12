@@ -108,6 +108,7 @@ import Control.Exception.Enclosed
 import Control.Lens hiding ((.=))
 import Control.Monad.Except
 import Control.Monad.Trans.Control
+import Control.Monad.Writer
 import Control.Monad.Unicode
 
 import qualified Data.CaseInsensitive as CI
@@ -282,11 +283,13 @@ defaultLoggerBackendConfig = LoggerBackendConfig
     , _loggerBackendConfigHandle = StdOut
     }
 
--- TODO: warn when handle is a file and color is on
---
-validateLoggerBackendConfig ∷ ConfigValidation LoggerBackendConfig λ
-validateLoggerBackendConfig LoggerBackendConfig{..} =
+validateLoggerBackendConfig ∷ ConfigValidation LoggerBackendConfig []
+validateLoggerBackendConfig LoggerBackendConfig{..} = do
         validateLoggerHandleConfig _loggerBackendConfigHandle
+        case (_loggerBackendConfigHandle, _loggerBackendConfigColor) of
+            (FileHandle _, ColorTrue) →
+                tell ["log messages are formatted using ANSI color escape codes but are written to a file"]
+            _ → return ()
 
 instance ToJSON LoggerBackendConfig where
     toJSON LoggerBackendConfig{..} = object
