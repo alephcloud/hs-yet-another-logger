@@ -76,7 +76,7 @@ data ColorOption
 instance NFData ColorOption
 
 readColorOption
-    ∷  (Monad m, Eq a, Show a, CI.FoldCase a, IsString a, IsString e, Monoid e, MonadError e m)
+    ∷ (Monad m, Eq a, Show a, CI.FoldCase a, IsString a, IsString e, Monoid e, MonadError e m)
     ⇒ a
     → m ColorOption
 readColorOption x = case CI.mk x of
