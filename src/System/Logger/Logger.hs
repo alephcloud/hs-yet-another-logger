@@ -58,9 +58,6 @@ module System.Logger.Logger
 , withLogger
 , withLogFunction
 
--- * Handle Logger Backend Implementation
-, withHandleLoggerBackend
-
 -- * LoggerT Monad Transformer
 , LoggerT
 , runLoggerT
@@ -71,27 +68,11 @@ module System.Logger.Logger
 -- ** Logger Configuration
 , LoggerConfig(..)
 , loggerConfigQueueSize
-, loggerConfigBackend
 , loggerConfigThreshold
 , loggerConfigScope
 , defaultLoggerConfig
 , validateLoggerConfig
 , pLoggerConfig
-
--- ** Logger Handle Configuration
-, LoggerHandleConfig(..)
-, loggerHandleConfigText
-, readLoggerHandleConfig
-, validateLoggerHandleConfig
-, pLoggerHandleConfig
-
--- ** Logger Backend Configuration
-, LoggerBackendConfig(..)
-, loggerBackendConfigHandle
-, loggerBackendConfigColor
-, defaultLoggerBackendConfig
-, validateLoggerBackendConfig
-, pLoggerBackendConfig
 
 ) where
 

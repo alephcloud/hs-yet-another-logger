@@ -52,27 +52,11 @@ module System.Logger.Logger.Internal
 -- * Logger Configuration
   LoggerConfig(..)
 , loggerConfigQueueSize
-, loggerConfigBackend
 , loggerConfigThreshold
 , loggerConfigScope
 , defaultLoggerConfig
 , validateLoggerConfig
 , pLoggerConfig
-
--- * Logger Handle Configuration
-, LoggerHandleConfig(..)
-, loggerHandleConfigText
-, readLoggerHandleConfig
-, validateLoggerHandleConfig
-, pLoggerHandleConfig
-
--- * Logger Backend Configuration
-, LoggerBackendConfig(..)
-, loggerBackendConfigHandle
-, loggerBackendConfigColor
-, defaultLoggerBackendConfig
-, validateLoggerBackendConfig
-, pLoggerBackendConfig
 
 -- * Logger
 , Logger
@@ -84,10 +68,6 @@ module System.Logger.Logger.Internal
 , loggCtx
 , withLogFunction
 
--- * Handle Logger Backend Implementation
-, withHandleLoggerBackend
-, handleLoggerBackend
-
 -- * LoggerT Monad Transformer
 , LoggerT
 , runLoggerT
@@ -95,7 +75,6 @@ module System.Logger.Logger.Internal
 ) where
 
 import Configuration.Utils hiding (Lens', Error)
-import Configuration.Utils.Validation
 
 import Control.Concurrent.Async
 -- FIXME: use a better data structure with non-amortized complexity bounds
@@ -108,30 +87,17 @@ import Control.Exception.Enclosed
 import Control.Lens hiding ((.=))
 import Control.Monad.Except
 import Control.Monad.Trans.Control
-import Control.Monad.Writer
 import Control.Monad.Unicode
 
-import qualified Data.CaseInsensitive as CI
-import qualified Data.List as L
 import Data.Monoid.Unicode
-import Data.String
-import qualified Data.Text as T
-import Data.Text.Lens
-import qualified Data.Text.IO as T
 import Data.Typeable
 
 import GHC.Generics
 
-import qualified Options.Applicative as O
-
 import Prelude.Unicode
-
-import qualified System.Console.ANSI as A
-import System.IO
 
 -- internal modules
 
-import System.Logger.Backend.ColorOption
 import System.Logger.Internal
 import System.Logger.Types
 
@@ -142,7 +108,6 @@ import System.Logger.Types
 --
 data LoggerConfig = LoggerConfig
     { _loggerConfigQueueSize ∷ !Int
-    , _loggerConfigBackend ∷ !LoggerBackendConfig
     , _loggerConfigThreshold ∷ !LogLevel
         -- ^ initial log threshold, can be changed later on
     , _loggerConfigScope ∷ !LogScope
@@ -154,9 +119,6 @@ data LoggerConfig = LoggerConfig
 
 loggerConfigQueueSize ∷ Lens' LoggerConfig Int
 loggerConfigQueueSize = lens _loggerConfigQueueSize $ \a b → a { _loggerConfigQueueSize = b }
-
-loggerConfigBackend ∷ Lens' LoggerConfig LoggerBackendConfig
-loggerConfigBackend = lens _loggerConfigBackend $ \a b → a { _loggerConfigBackend = b }
 
 loggerConfigThreshold ∷ Lens' LoggerConfig LogLevel
 loggerConfigThreshold = lens _loggerConfigThreshold $ \a b → a { _loggerConfigThreshold = b }
@@ -172,7 +134,6 @@ instance NFData LoggerConfig
 defaultLoggerConfig ∷ LoggerConfig
 defaultLoggerConfig = LoggerConfig
     { _loggerConfigQueueSize = 1000
-    , _loggerConfigBackend = defaultLoggerBackendConfig
     , _loggerConfigThreshold = Warn
     , _loggerConfigScope = []
     , _loggerConfigPolicy = LogPolicyDiscard
@@ -184,7 +145,6 @@ validateLoggerConfig _ = return ()
 instance ToJSON LoggerConfig where
     toJSON LoggerConfig{..} = object
         [ "queue_size" .= _loggerConfigQueueSize
-        , "logger_backend" .= _loggerConfigBackend
         , "log_level" .= _loggerConfigThreshold
         , "scope" .= _loggerConfigScope
         , "policy" .= _loggerConfigPolicy
@@ -193,7 +153,6 @@ instance ToJSON LoggerConfig where
 instance FromJSON (LoggerConfig → LoggerConfig) where
     parseJSON = withObject "LoggerConfig" $ \o → id
         <$< loggerConfigQueueSize ..: "queue_size" × o
-        <*< loggerConfigBackend %.: "logger_backend" × o
         <*< loggerConfigThreshold ..: "log_level" × o
         <*< loggerConfigScope ..: "scope" × o
         <*< loggerConfigPolicy ..: "policy" × o
@@ -204,107 +163,8 @@ pLoggerConfig = id
         × long "queue-size"
         ⊕ metavar "INT"
         ⊕ help "size of the internal logger queue"
-    <*< loggerConfigBackend %:: pLoggerBackendConfig
     <*< loggerConfigThreshold .:: pLogLevel
     <*< loggerConfigPolicy .:: pLogPolicy
-
--- -------------------------------------------------------------------------- --
--- Handle Logger Backend Configuration
-
-data LoggerHandleConfig
-    = StdOut
-    | StdErr
-    | FileHandle FilePath
-    deriving (Show, Read, Eq, Ord, Typeable, Generic)
-
-instance NFData LoggerHandleConfig
-
-readLoggerHandleConfig
-    ∷ (MonadError e m, Eq a, Show a, CI.FoldCase a, IsText a, IsString e, Monoid e)
-    ⇒ a
-    → m LoggerHandleConfig
-readLoggerHandleConfig x = case CI.mk tx of
-    "stdout" → return StdOut
-    "stderr" → return StdErr
-    _ | CI.mk (L.take 5 tx) ≡ "file:" → return $ FileHandle (L.drop 5 tx)
-    e → throwError $ "unexpected logger handle value: "
-        ⊕ fromString (show e)
-        ⊕ ", expected \"stdout\", \"stderr\", or \"file:<FILENAME>\""
-  where
-    tx = packed # x
-
-loggerHandleConfigText
-    ∷ (IsString a, Monoid a)
-    ⇒ LoggerHandleConfig
-    → a
-loggerHandleConfigText StdOut = "stdout"
-loggerHandleConfigText StdErr = "stderr"
-loggerHandleConfigText (FileHandle f) = "file:" ⊕ fromString f
-
-validateLoggerHandleConfig ∷ ConfigValidation LoggerHandleConfig λ
-validateLoggerHandleConfig (FileHandle filepath) = validateFileWritable "file handle" filepath
-validateLoggerHandleConfig _ = return ()
-
-instance ToJSON LoggerHandleConfig where
-    toJSON = String ∘ loggerHandleConfigText
-
-instance FromJSON LoggerHandleConfig where
-    parseJSON = withText "LoggerHandleConfig" $ either fail return ∘ readLoggerHandleConfig
-
-pLoggerHandleConfig ∷ O.Parser LoggerHandleConfig
-pLoggerHandleConfig = option (eitherReader readLoggerHandleConfig)
-    × long "logger-backend-handle"
-    ⊕ metavar "stdout|stderr|file:<FILENAME>"
-    ⊕ help "handle where the logs are written"
-
--- -------------------------------------------------------------------------- --
--- Logger Backend Configuration
-
--- | LoggerBackendConfig
---
-data LoggerBackendConfig = LoggerBackendConfig
-    { _loggerBackendConfigColor ∷ !ColorOption
-    , _loggerBackendConfigHandle ∷ !LoggerHandleConfig
-    }
-    deriving (Show, Read, Eq, Ord, Typeable, Generic)
-
-loggerBackendConfigColor ∷ Lens' LoggerBackendConfig ColorOption
-loggerBackendConfigColor = lens _loggerBackendConfigColor $ \a b → a { _loggerBackendConfigColor = b }
-
-loggerBackendConfigHandle ∷ Lens' LoggerBackendConfig LoggerHandleConfig
-loggerBackendConfigHandle = lens _loggerBackendConfigHandle $ \a b → a { _loggerBackendConfigHandle = b }
-
-instance NFData LoggerBackendConfig
-
-defaultLoggerBackendConfig ∷ LoggerBackendConfig
-defaultLoggerBackendConfig = LoggerBackendConfig
-    { _loggerBackendConfigColor = defaultColorOption
-    , _loggerBackendConfigHandle = StdOut
-    }
-
-validateLoggerBackendConfig ∷ ConfigValidation LoggerBackendConfig []
-validateLoggerBackendConfig LoggerBackendConfig{..} = do
-        validateLoggerHandleConfig _loggerBackendConfigHandle
-        case (_loggerBackendConfigHandle, _loggerBackendConfigColor) of
-            (FileHandle _, ColorTrue) →
-                tell ["log messages are formatted using ANSI color escape codes but are written to a file"]
-            _ → return ()
-
-instance ToJSON LoggerBackendConfig where
-    toJSON LoggerBackendConfig{..} = object
-        [ "color" .= _loggerBackendConfigColor
-        , "handle" .= _loggerBackendConfigHandle
-        ]
-
-instance FromJSON (LoggerBackendConfig → LoggerBackendConfig) where
-    parseJSON = withObject "LoggerBackendConfig" $ \o → id
-        <$< loggerBackendConfigColor ..: "color" × o
-        <*< loggerBackendConfigHandle ..: "handle" × o
-
-pLoggerBackendConfig ∷ MParser LoggerBackendConfig
-pLoggerBackendConfig = id
-    <$< loggerBackendConfigColor .:: pColorOption
-    <*< loggerBackendConfigHandle .:: pLoggerHandleConfig
 
 -- -------------------------------------------------------------------------- --
 -- Logger
@@ -538,67 +398,6 @@ runLogT
     → LoggerT msg m α
     → m α
 runLogT config backend = withLogger config backend ∘ runLoggerT
-
--- -------------------------------------------------------------------------- --
--- Logger Backend Implementation
-
-withHandleLoggerBackend
-    ∷ (MonadIO m, MonadBaseControl IO m)
-    ⇒ LoggerBackendConfig
-    → (LoggerBackend T.Text → m α)
-    → m α
-withHandleLoggerBackend conf inner =
-    case conf ^. loggerBackendConfigHandle of
-        StdErr → run stderr
-        StdOut → run stdout
-        FileHandle f → liftBaseOp (withFile f AppendMode) run
-  where
-    run h = do
-        colored ← liftIO $ useColor (conf ^. loggerBackendConfigColor) h
-        inner $ handleLoggerBackend h colored
-
-handleLoggerBackend
-    ∷ Handle
-    → Bool
-        -- ^ whether to use ANSI color escape codes
-    → LoggerBackend T.Text
-handleLoggerBackend h colored eitherMsg = do
-    T.hPutStrLn h
-        $ inLevelColor colored ("[" ⊕ sshow level ⊕ "] ")
-        ⊕ inScopeColor colored ("[" ⊕ formatedScope ⊕ "] ")
-        ⊕ (msg ^. logMsg)
-  where
-    msg = either id id eitherMsg
-    level = msg ^. logMsgLevel
-
-    formatedScope = T.intercalate "|" ∘ L.map formatLabel ∘ reverse $ msg ^. logMsgScope
-    formatLabel (key, val) = key ⊕ "=" ⊕ val
-
-    inScopeColor True = inBlue
-    inScopeColor False = id
-
-    inLevelColor True = case level of
-        Error → inRed
-        Warn → inOrange
-        Info → inGreen
-        _ → id
-    inLevelColor False = id
-
-    inColor ∷ A.ColorIntensity → A.Color → T.Text → T.Text
-    inColor i c t = T.pack (A.setSGRCode [A.SetColor A.Foreground i c]) ⊕ t ⊕ T.pack (A.setSGRCode [A.Reset])
-
-    inRed ∷ T.Text → T.Text
-    inRed = inColor A.Vivid A.Red
-
-    inOrange ∷ T.Text → T.Text
-    inOrange = inColor A.Dull A.Red
-
-    inGreen ∷ T.Text → T.Text
-    inGreen = inColor A.Dull A.Green
-
-    inBlue ∷ T.Text → T.Text
-    inBlue = inColor A.Dull A.Blue
-{-# INLINEABLE handleLoggerBackend #-}
 
 -- -------------------------------------------------------------------------- --
 -- Tools

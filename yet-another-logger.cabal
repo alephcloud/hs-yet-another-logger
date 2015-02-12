@@ -46,7 +46,7 @@ Description:
     "System.Logger.Types".
     .
     The package also provides a concrete Logger that implements these components
-    in the module "System.Logger.Logger".
+    in the module "System.Logger.Logger" and "System.Logger.Backend.Handle"
 
 Homepage: https://github.com/alephcloud/hs-yet-another-logger
 License: Apache-2.0
@@ -81,6 +81,7 @@ Library
     exposed-modules:
         System.Logger
         System.Logger.Backend.ColorOption
+        System.Logger.Backend.Handle
         System.Logger.Internal
         System.Logger.Logger
         System.Logger.Logger.Internal

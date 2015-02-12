@@ -48,7 +48,7 @@ form the abstract logger interface that is defined in the module
 `System.Logger.Types`.
 
 The package also provides a concrete Logger that implements these components
-in the module `System.Logger.Logger`.
+in the module `System.Logger.Logger` and `System.Logger.Backend.Handle`.
 
 Logger Implementation
 =====================

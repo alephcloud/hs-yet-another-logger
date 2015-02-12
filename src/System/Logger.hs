@@ -25,9 +25,14 @@
 -- Stability: experimental
 --
 -- This module re-exports the logger interface from "System.Logger.Types" and
--- the implementation of that interface from "System.Logger.Logger".
+-- the implementation of that interface from "System.Logger.Logger" and
+-- "System.Logger.Backend.Handle".
 --
 
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -43,19 +48,36 @@ module System.Logger
 
 -- * Yet Another Logger
 , module System.Logger.Logger
+
+-- * Handle Backend
+, module System.Logger.Backend.Handle
+
+-- * Logging System Configuration
+, LogConfig(..)
+, logConfigLogger
+, logConfigBackend
+, defaultLogConfig
+, validateLogConfig
+, pLogConfig
 ) where
 
-import Control.Lens
+import Configuration.Utils hiding (Lens')
+
+import Control.Lens hiding ((.=))
 import Control.Monad.IO.Class
 import Control.Monad.Trans.Control
 
 import qualified Data.Text as T
+import Data.Typeable
+
+import GHC.Generics
 
 import Prelude.Unicode
 
-import System.Logger.Types
-import System.Logger.Logger
 import System.Logger.Backend.ColorOption
+import System.Logger.Backend.Handle
+import System.Logger.Logger
+import System.Logger.Types
 
 -- | A simple console logger
 --
@@ -76,11 +98,11 @@ withConsoleLogger
     → LoggerT T.Text m α
     → m α
 withConsoleLogger level inner =
-    withHandleLoggerBackend (config ^. loggerConfigBackend) $ \backend →
-        withLogger config backend $ runLoggerT inner
+    withHandleBackend (config ^. logConfigBackend) $ \backend →
+        withLogger (config ^. logConfigLogger) backend $ runLoggerT inner
   where
-    config = defaultLoggerConfig
-        & loggerConfigThreshold .~ level
+    config = defaultLogConfig
+        & logConfigLogger ∘ loggerConfigThreshold .~ level
 
 -- | A simple file logger
 --
@@ -91,11 +113,53 @@ withFileLogger
     → LoggerT T.Text m α
     → m α
 withFileLogger f level inner =
-    withHandleLoggerBackend (config ^. loggerConfigBackend) $ \backend →
-        withLogger config backend $ runLoggerT inner
+    withHandleBackend (config ^. logConfigBackend) $ \backend →
+        withLogger (config ^. logConfigLogger) backend $ runLoggerT inner
   where
-    config = defaultLoggerConfig
-        & loggerConfigThreshold .~ level
-        & loggerConfigBackend ∘ loggerBackendConfigColor .~ ColorFalse
-        & loggerConfigBackend ∘ loggerBackendConfigHandle .~ FileHandle f
+    config = defaultLogConfig
+        & logConfigLogger ∘ loggerConfigThreshold .~ level
+        & logConfigBackend ∘ handleBackendConfigColor .~ ColorFalse
+        & logConfigBackend ∘ handleBackendConfigHandle .~ FileHandle f
+
+-- -------------------------------------------------------------------------- --
+-- Logging System Configuration
+
+data LogConfig = LogConfig
+    { _logConfigLogger ∷ !LoggerConfig
+    , _logConfigBackend ∷ !HandleBackendConfig
+    }
+    deriving (Show, Read, Eq, Ord, Typeable, Generic)
+
+logConfigLogger ∷ Lens' LogConfig LoggerConfig
+logConfigLogger = lens _logConfigLogger $ \a b → a { _logConfigLogger = b }
+
+logConfigBackend ∷ Lens' LogConfig HandleBackendConfig
+logConfigBackend = lens _logConfigBackend $ \a b → a { _logConfigBackend = b }
+
+defaultLogConfig ∷ LogConfig
+defaultLogConfig = LogConfig
+    { _logConfigLogger = defaultLoggerConfig
+    , _logConfigBackend = defaultHandleBackendConfig
+    }
+
+validateLogConfig ∷ ConfigValidation LogConfig []
+validateLogConfig LogConfig{..} = do
+    validateLoggerConfig _logConfigLogger
+    validateHandleBackendConfig _logConfigBackend
+
+instance ToJSON LogConfig where
+    toJSON LogConfig{..} = object
+        [ "logger" .= _logConfigLogger
+        , "backend" .= _logConfigBackend
+        ]
+
+instance FromJSON (LogConfig → LogConfig) where
+    parseJSON = withObject "LogConfig" $ \o → id
+        <$< logConfigLogger %.: "logger" × o
+        <*< logConfigBackend %.: "backend" × o
+
+pLogConfig ∷ MParser LogConfig
+pLogConfig = id
+    <$< logConfigLogger %:: pLoggerConfig
+    <*< logConfigBackend %:: pHandleBackendConfig
 
