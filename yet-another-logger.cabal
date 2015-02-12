@@ -107,7 +107,8 @@ Library
         stm-chans >= 3.0,
         text >= 1.2,
         trace >= 0.1,
-        transformers >= 0.3
+        transformers >= 0.3,
+        transformers-base >= 0.4
 
     ghc-options: -Wall
 

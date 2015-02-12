@@ -25,6 +25,7 @@
 -- Stability: experimental
 --
 
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
@@ -82,6 +83,7 @@ import Configuration.Utils hiding (Lens', Error)
 
 import Control.DeepSeq
 import Control.Lens hiding ((.=))
+import Control.Monad.Base
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.Trans.Control
@@ -405,14 +407,24 @@ class LoggerCtx ctx msg | ctx → msg where
     withLoggerPolicy policy ctx f = f $ ctx & setLoggerPolicy .~ policy
     {-# INLINE withLoggerPolicy #-}
 
-newtype LoggerCtxT ctx m α = LoggerCtxT (ReaderT ctx m α)
-    deriving (Functor, Applicative, Monad, MonadIO, MonadTrans, MonadReader ctx)
+newtype LoggerCtxT ctx m α = LoggerCtxT { unLoggerCtxT ∷ ReaderT ctx m α }
+    deriving (Functor, Applicative, Monad, MonadIO, MonadTrans, MonadReader ctx, MonadBase b)
+
+instance MonadTransControl (LoggerCtxT ctx) where
+    type StT (LoggerCtxT ctx) a = StT (ReaderT ctx) a
+    liftWith = defaultLiftWith LoggerCtxT unLoggerCtxT
+    restoreT = defaultRestoreT LoggerCtxT
+
+instance MonadBaseControl b m ⇒ MonadBaseControl b (LoggerCtxT ctx m) where
+    type StM (LoggerCtxT ctx m) a = ComposeSt (LoggerCtxT ctx) m a
+    liftBaseWith = defaultLiftBaseWith
+    restoreM = defaultRestoreM
 
 runLoggerCtxT
     ∷ LoggerCtxT ctx m α
     → ctx
     → m α
-runLoggerCtxT (LoggerCtxT a) = runReaderT a
+runLoggerCtxT = runReaderT ∘ unLoggerCtxT
 
 instance (Show a, Typeable a, NFData a, MonadIO m, LoggerCtx ctx a) ⇒ MonadLog a (LoggerCtxT ctx m) where
     logg l m = ask ≫= \ctx → liftIO (loggerFunIO ctx l m)
