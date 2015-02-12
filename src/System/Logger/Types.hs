@@ -88,13 +88,12 @@ import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.Trans.Control
 import Control.Monad.Trans.Either
-import Control.Monad.Trans.State
+import Control.Monad.State
 import Control.Monad.Trans.Trace
-import Control.Monad.Trans.Writer
+import Control.Monad.Writer
 import Control.Monad.Unicode
 
 import qualified Data.CaseInsensitive as CI
-import Data.Monoid
 import Data.Monoid.Unicode
 import Data.String
 import qualified Data.Text as T
@@ -408,7 +407,7 @@ class LoggerCtx ctx msg | ctx → msg where
     {-# INLINE withLoggerPolicy #-}
 
 newtype LoggerCtxT ctx m α = LoggerCtxT { unLoggerCtxT ∷ ReaderT ctx m α }
-    deriving (Functor, Applicative, Monad, MonadIO, MonadTrans, MonadReader ctx, MonadBase b)
+    deriving (Functor, Applicative, Monad, MonadIO, MonadTrans, MonadReader ctx, MonadError a, MonadState a, MonadWriter a, MonadBase a)
 
 instance MonadTransControl (LoggerCtxT ctx) where
     type StT (LoggerCtxT ctx) a = StT (ReaderT ctx) a
