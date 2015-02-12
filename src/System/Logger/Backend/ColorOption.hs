@@ -1,6 +1,6 @@
 -- Copyright (c) 2014-2015 PivotCloud, Inc.
 --
--- System.Logger.ColorOption
+-- System.Logger.Backend.ColorOption
 --
 -- Please feel free to contact us at licensing@pivotmail.com with any
 -- contributions, additions, or other feedback; we would love to hear from
@@ -17,7 +17,7 @@
 -- under the License.
 
 -- |
--- Module: System.Logger.ColorOption
+-- Module: System.Logger.Backend.ColorOption
 -- Copyright: Copyright (c) 2014-2015 PivotCloud, Inc.
 -- License: Apache License, Version 2.0
 -- Maintainer: Lars Kuhtz <lkuhtz@pivotmail.com>
@@ -33,7 +33,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module System.Logger.ColorOption
+module System.Logger.Backend.ColorOption
 ( ColorOption(..)
 , readColorOption
 , colorOptionText

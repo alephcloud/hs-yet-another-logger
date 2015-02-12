@@ -80,7 +80,7 @@ Library
 
     exposed-modules:
         System.Logger
-        System.Logger.ColorOption
+        System.Logger.Backend.ColorOption
         System.Logger.Internal
         System.Logger.Logger
         System.Logger.Logger.Internal

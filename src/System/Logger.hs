@@ -55,7 +55,7 @@ import Prelude.Unicode
 
 import System.Logger.Types
 import System.Logger.Logger
-import System.Logger.ColorOption
+import System.Logger.Backend.ColorOption
 
 -- | A simple console logger
 --

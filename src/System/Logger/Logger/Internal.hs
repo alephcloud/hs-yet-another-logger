@@ -132,7 +132,7 @@ import System.IO
 
 -- internal modules
 
-import System.Logger.ColorOption
+import System.Logger.Backend.ColorOption
 import System.Logger.Internal
 import System.Logger.Types
 
