@@ -296,14 +296,14 @@ releaseLogger Logger{..} = liftIO $ do
 -- > withConsoleLogger
 -- >     ∷ (MonadIO m, MonadBaseControl IO m)
 -- >     ⇒ LogLevel
--- >     → (LoggerT T.Text m α)
+-- >     → LoggerT T.Text m α
 -- >     → m α
--- > withConsoleLogger level = do
--- >     backend ← mkHandleLoggerBackend $ config ^. loggerConfigBackend
--- >     withLogger config backend ∘ flip runLoggerT
--- >   where
--- >     config = defaultLoggerConfig
--- >         & loggerConfigThreshold .~ level
+-- > withConsoleLogger level inner = do
+-- >    withHandleBackend (config ^. logConfigBackend) $ \backend →
+-- >        withLogger (config ^. logConfigLogger) backend $ runLoggerT inner
+-- >  where
+-- >    config = defaultLogConfig
+-- >        & logConfigLogger ∘ loggerConfigThreshold .~ level
 --
 withLogger
     ∷ (MonadIO μ, MonadBaseControl IO μ)
