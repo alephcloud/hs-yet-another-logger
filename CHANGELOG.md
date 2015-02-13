@@ -1,10 +1,10 @@
 0.1
 ===
 
-*   Added `localScope` function to `MonadLog` and and implement `withLabel`
+*   Added `localScope` function to `MonadLog` and and implemented `withLabel`
     based on it.
 
-*   Added functions `popLabel` and `clearScope` are useful when setting
+*   Added functions `popLabel` and `clearScope`. These are useful when setting
     log-labels for bracket style functions.
 
 *   Remove overlapping `MonadLog` instances.
