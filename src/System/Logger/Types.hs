@@ -25,6 +25,7 @@
 -- Stability: experimental
 --
 
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE DeriveDataTypeable #-}
@@ -74,6 +75,9 @@ module System.Logger.Types
 
 -- * MonadLog
 , MonadLog(..)
+, withLabel
+, clearScope
+, popLabel
 
 ) where
 
@@ -266,89 +270,98 @@ type LogFunction a m = LogLevel → a → m ()
 class Monad m ⇒ MonadLog a m | m → a where
     logg ∷ LogFunction a m
     withLevel ∷ LogLevel → m α → m α
-    withLabel ∷ LogLabel → m α → m α
     withPolicy ∷ LogPolicy → m α → m α
+    localScope ∷ (LogScope → LogScope) → m α → m α
+
+withLabel ∷ MonadLog a m ⇒ LogLabel → m α → m α
+withLabel = localScope ∘ (:)
+
+popLabel ∷ MonadLog a m ⇒ m α → m α
+popLabel = localScope $ \case { [] → []; (_:t) → t }
+
+clearScope ∷ MonadLog a m ⇒ m α → m α
+clearScope = localScope $ const []
 
 {-
 -- Not sure if this instance is a good idea
 instance (Show a, Typeable a, NFData a, MonadIO m, LoggerCtx ctx a, MonadReader ctx m) ⇒ MonadLog a m where
     logg l m = ask ≫= \ctx → liftIO (loggerFunIO ctx l m)
     withLevel level = local $ setLoggerLevel .~ level
-    withLabel label = local $ setLoggerScope %~ (:) label
     withPolicy policy = local $ setLoggerPolicy .~ policy
+    localScope = local ∘ over setLoggerScope
 
     {-# INLINE logg #-}
     {-# INLINE withLevel #-}
-    {-# INLINE withLabel #-}
     {-# INLINE withPolicy #-}
+    {-# INLINE localScope #-}
 
 -- Not sure if this instance is a good idea
 instance MonadLog a m ⇒ MonadLog a (ReaderT σ m) where
     logg l = lift ∘ logg l
     withLevel level inner = liftWith (\run → withLevel level (run inner)) ≫= restoreT ∘ return
-    withLabel label inner = liftWith (\run → withLabel label (run inner)) ≫= restoreT ∘ return
     withPolicy policy inner = liftWith (\run → withPolicy policy (run inner)) ≫= restoreT ∘ return
+    localScope f inner = liftWith (\run → localScope f (run inner)) ≫= restoreT ∘ return
 
     {-# INLINE logg #-}
     {-# INLINE withLevel #-}
-    {-# INLINE withLabel #-}
     {-# INLINE withPolicy #-}
+    {-# INLINE localScope #-}
 -}
 
 instance (Monoid σ, MonadLog a m) ⇒ MonadLog a (WriterT σ m) where
     logg l = lift ∘ logg l
     withLevel level inner = liftWith (\run → withLevel level (run inner)) ≫= restoreT ∘ return
-    withLabel label inner = liftWith (\run → withLabel label (run inner)) ≫= restoreT ∘ return
     withPolicy policy inner = liftWith (\run → withPolicy policy (run inner)) ≫= restoreT ∘ return
+    localScope f inner = liftWith (\run → localScope f (run inner)) ≫= restoreT ∘ return
 
     {-# INLINE logg #-}
     {-# INLINE withLevel #-}
-    {-# INLINE withLabel #-}
     {-# INLINE withPolicy #-}
+    {-# INLINE localScope #-}
 
 instance (MonadLog a m) ⇒ MonadLog a (ExceptT ε m) where
     logg l = lift ∘ logg l
     withLevel level inner = liftWith (\run → withLevel level (run inner)) ≫= restoreT ∘ return
-    withLabel label inner = liftWith (\run → withLabel label (run inner)) ≫= restoreT ∘ return
     withPolicy policy inner = liftWith (\run → withPolicy policy (run inner)) ≫= restoreT ∘ return
+    localScope f inner = liftWith (\run → localScope f (run inner)) ≫= restoreT ∘ return
 
     {-# INLINE logg #-}
     {-# INLINE withLevel #-}
-    {-# INLINE withLabel #-}
     {-# INLINE withPolicy #-}
+    {-# INLINE localScope #-}
 
 instance (MonadLog a m) ⇒ MonadLog a (StateT σ m) where
     logg l = lift ∘ logg l
     withLevel level inner = liftWith (\run → withLevel level (run inner)) ≫= restoreT ∘ return
-    withLabel label inner = liftWith (\run → withLabel label (run inner)) ≫= restoreT ∘ return
     withPolicy policy inner = liftWith (\run → withPolicy policy (run inner)) ≫= restoreT ∘ return
+    localScope f inner = liftWith (\run → localScope f (run inner)) ≫= restoreT ∘ return
 
     {-# INLINE logg #-}
     {-# INLINE withLevel #-}
-    {-# INLINE withLabel #-}
     {-# INLINE withPolicy #-}
+    {-# INLINE localScope #-}
 
 instance (MonadLog a m) ⇒ MonadLog a (TraceT t e m) where
     logg l = lift ∘ logg l
     withLevel level inner = liftWith (\run → withLevel level (run inner)) ≫= restoreT ∘ return
-    withLabel label inner = liftWith (\run → withLabel label (run inner)) ≫= restoreT ∘ return
     withPolicy policy inner = liftWith (\run → withPolicy policy (run inner)) ≫= restoreT ∘ return
+    localScope f inner = liftWith (\run → localScope f (run inner)) ≫= restoreT ∘ return
 
     {-# INLINE logg #-}
     {-# INLINE withLevel #-}
-    {-# INLINE withLabel #-}
     {-# INLINE withPolicy #-}
+    {-# INLINE localScope #-}
 
 instance (MonadLog a m) ⇒ MonadLog a (EitherT σ m) where
     logg l = lift ∘ logg l
     withLevel level inner = liftWith (\run → withLevel level (run inner)) ≫= restoreT ∘ return
-    withLabel label inner = liftWith (\run → withLabel label (run inner)) ≫= restoreT ∘ return
     withPolicy policy inner = liftWith (\run → withPolicy policy (run inner)) ≫= restoreT ∘ return
+    localScope f inner = liftWith (\run → localScope f (run inner)) ≫= restoreT ∘ return
 
     {-# INLINE logg #-}
     {-# INLINE withLevel #-}
-    {-# INLINE withLabel #-}
     {-# INLINE withPolicy #-}
+    {-# INLINE localScope #-}
 
 {-
 -- Uses @OverlappingInstances@ to lift MonadLog in all transformers with an
@@ -428,11 +441,11 @@ runLoggerCtxT = runReaderT ∘ unLoggerCtxT
 instance (Show a, Typeable a, NFData a, MonadIO m, LoggerCtx ctx a) ⇒ MonadLog a (LoggerCtxT ctx m) where
     logg l m = ask ≫= \ctx → liftIO (loggerFunIO ctx l m)
     withLevel level = local $ setLoggerLevel .~ level
-    withLabel label = local $ setLoggerScope %~ (:) label
     withPolicy policy = local $ setLoggerPolicy .~ policy
+    localScope f = local $ setLoggerScope %~ f
 
     {-# INLINE logg #-}
     {-# INLINE withLevel #-}
-    {-# INLINE withLabel #-}
     {-# INLINE withPolicy #-}
+    {-# INLINE localScope #-}
 
