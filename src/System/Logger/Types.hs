@@ -33,7 +33,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE OverlappingInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -271,6 +270,7 @@ class Monad m ⇒ MonadLog a m | m → a where
     withLabel ∷ LogLabel → m α → m α
     withPolicy ∷ LogPolicy → m α → m α
 
+{-
 -- Not sure if this instance is a good idea
 instance (Show a, Typeable a, NFData a, MonadIO m, LoggerCtx ctx a, MonadReader ctx m) ⇒ MonadLog a m where
     logg l m = ask ≫= \ctx → liftIO (loggerFunIO ctx l m)
@@ -294,6 +294,7 @@ instance MonadLog a m ⇒ MonadLog a (ReaderT σ m) where
     {-# INLINE withLevel #-}
     {-# INLINE withLabel #-}
     {-# INLINE withPolicy #-}
+-}
 
 instance (Monoid σ, MonadLog a m) ⇒ MonadLog a (WriterT σ m) where
     logg l = lift ∘ logg l
