@@ -39,6 +39,7 @@ module System.Logger.Backend.ColorOption
 , colorOptionText
 , defaultColorOption
 , pColorOption
+, pColorOption_
 , useColor
 ) where
 
@@ -51,6 +52,7 @@ import qualified Data.CaseInsensitive as CI
 import Data.Monoid
 import Data.Monoid.Unicode
 import Data.String
+import qualified Data.Text as T
 import Data.Typeable
 
 import GHC.Generics
@@ -105,8 +107,14 @@ instance FromJSON ColorOption where
     parseJSON = withText "ColorOption" $ either fail return ∘ readColorOption
 
 pColorOption ∷ O.Parser ColorOption
-pColorOption = option (eitherReader readColorOption)
-   × long "color"
+pColorOption = pColorOption_ ""
+
+pColorOption_
+    ∷ T.Text
+        -- ^ prefix for the command line options.
+    → O.Parser ColorOption
+pColorOption_ prefix = option (eitherReader readColorOption)
+   × long (T.unpack prefix ⊕ "color")
    ⊕ short 'c'
    ⊕ help "whether to use ANSI terminal colors in the output"
 

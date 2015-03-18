@@ -43,6 +43,7 @@ module System.Logger.Backend.Handle
 , readLoggerHandleConfig
 , validateLoggerHandleConfig
 , pLoggerHandleConfig
+, pLoggerHandleConfig_
 
 -- * Backend Configuration
 , HandleBackendConfig(..)
@@ -51,6 +52,7 @@ module System.Logger.Backend.Handle
 , defaultHandleBackendConfig
 , validateHandleBackendConfig
 , pHandleBackendConfig
+, pHandleBackendConfig_
 
 -- * Backend Implementation
 , withHandleBackend
@@ -134,8 +136,14 @@ instance FromJSON LoggerHandleConfig where
     parseJSON = withText "LoggerHandleConfig" $ either fail return ∘ readLoggerHandleConfig
 
 pLoggerHandleConfig ∷ O.Parser LoggerHandleConfig
-pLoggerHandleConfig = option (eitherReader readLoggerHandleConfig)
-    × long "logger-backend-handle"
+pLoggerHandleConfig = pLoggerHandleConfig_ ""
+
+pLoggerHandleConfig_
+    ∷ T.Text
+        -- ^ prefix for the command line options.
+    → O.Parser LoggerHandleConfig
+pLoggerHandleConfig_ prefix = option (eitherReader readLoggerHandleConfig)
+    × long (T.unpack prefix ⊕ "logger-backend-handle")
     ⊕ metavar "stdout|stderr|file:<FILENAME>"
     ⊕ help "handle where the logs are written"
 
@@ -184,9 +192,15 @@ instance FromJSON (HandleBackendConfig → HandleBackendConfig) where
         <*< handleBackendConfigHandle ..: "handle" × o
 
 pHandleBackendConfig ∷ MParser HandleBackendConfig
-pHandleBackendConfig = id
-    <$< handleBackendConfigColor .:: pColorOption
-    <*< handleBackendConfigHandle .:: pLoggerHandleConfig
+pHandleBackendConfig = pHandleBackendConfig_ ""
+
+pHandleBackendConfig_
+    ∷ T.Text
+        -- ^ prefix for this and all subordinate command line options.
+    → MParser HandleBackendConfig
+pHandleBackendConfig_ prefix = id
+    <$< handleBackendConfigColor .:: pColorOption_ prefix
+    <*< handleBackendConfigHandle .:: pLoggerHandleConfig_ prefix
 
 -- -------------------------------------------------------------------------- --
 -- Backend Implementation

@@ -52,6 +52,7 @@ module System.Logger.Logger.Internal
 , defaultLoggerConfig
 , validateLoggerConfig
 , pLoggerConfig
+, pLoggerConfig_
 
 -- * Logger
 , Logger
@@ -85,6 +86,7 @@ import Control.Monad.Trans.Control
 import Control.Monad.Unicode
 
 import Data.Monoid.Unicode
+import qualified Data.Text as T
 import Data.Typeable
 
 import GHC.Generics
@@ -153,13 +155,19 @@ instance FromJSON (LoggerConfig → LoggerConfig) where
         <*< loggerConfigPolicy ..: "policy" × o
 
 pLoggerConfig ∷ MParser LoggerConfig
-pLoggerConfig = id
+pLoggerConfig = pLoggerConfig_ ""
+
+pLoggerConfig_
+    ∷ T.Text
+        -- ^ prefix for this and all subordinate command line options.
+    → MParser LoggerConfig
+pLoggerConfig_ prefix = id
     <$< loggerConfigQueueSize .:: option auto
-        × long "queue-size"
+        × long (T.unpack prefix ⊕ "queue-size")
         ⊕ metavar "INT"
         ⊕ help "size of the internal logger queue"
-    <*< loggerConfigThreshold .:: pLogLevel
-    <*< loggerConfigPolicy .:: pLogPolicy
+    <*< loggerConfigThreshold .:: pLogLevel_ prefix
+    <*< loggerConfigPolicy .:: pLogPolicy_ prefix
 
 -- -------------------------------------------------------------------------- --
 -- Logger

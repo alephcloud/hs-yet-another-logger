@@ -59,6 +59,7 @@ module System.Logger
 , defaultLogConfig
 , validateLogConfig
 , pLogConfig
+, pLogConfig_
 ) where
 
 import Configuration.Utils hiding (Lens')
@@ -159,7 +160,12 @@ instance FromJSON (LogConfig → LogConfig) where
         <*< logConfigBackend %.: "backend" × o
 
 pLogConfig ∷ MParser LogConfig
-pLogConfig = id
-    <$< logConfigLogger %:: pLoggerConfig
-    <*< logConfigBackend %:: pHandleBackendConfig
+pLogConfig = pLogConfig_ ""
 
+pLogConfig_
+    ∷ T.Text
+        -- ^ prefix for this and all subordinate command line options.
+    → MParser LogConfig
+pLogConfig_ prefix = id
+    <$< logConfigLogger %:: pLoggerConfig_ prefix
+    <*< logConfigBackend %:: pHandleBackendConfig_ prefix
