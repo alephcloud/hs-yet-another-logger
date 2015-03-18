@@ -93,6 +93,8 @@ import GHC.Generics
 
 import Prelude.Unicode
 
+import System.Timeout
+
 -- internal modules
 
 import System.Logger.Internal
@@ -241,9 +243,6 @@ createLogger LoggerConfig{..} backend = liftIO $ do
 
 -- FIXME: make this more reliable
 --
--- For instance if 'readTBMQeue' (not sure if that can happen) throws an
--- exception 'releaseLogger' may not terminate.
---
 -- We must deal better with exceptions thrown by the backend: we should
 -- use some reasonable re-spawn logic. Right now there is the risk of a
 -- busy loop.
@@ -290,11 +289,14 @@ backendWorker backend queue missed = async $ go `catchAny` \e → do
 
 releaseLogger
     ∷ MonadIO μ
-    ⇒ Logger a
+    ⇒ Maybe Int
+        -- ^ Timeout to wait for the logger to finish (microseconds)
+    → Logger a
     → μ ()
-releaseLogger Logger{..} = liftIO $ do
+releaseLogger t Logger{..} = liftIO $ do
     atomically $ closeTBMQueue _loggerQueue
-    wait _loggerWorker
+    maybe id (\x → void ∘ timeout x) t $ wait _loggerWorker
+    cancel _loggerWorker
 
 -- | Provide a computation with a 'Logger'.
 --
@@ -313,6 +315,15 @@ releaseLogger Logger{..} = liftIO $ do
 -- >    config = defaultLogConfig
 -- >        & logConfigLogger ∘ loggerConfigThreshold .~ level
 --
+-- On termination the main threads waits up to 3 seconds for the the logger
+-- to flush the log queue and deliver all log messages. You can adjust
+-- this value by using 'createLogger' and 'releaseLogger' directly:
+--
+-- > withLogger config backend =
+-- >     bracket (createLogger config backend) (releaseLogger waitTimeout)
+-- >  where
+-- >    waitTimeout = Just 3000000
+--
 withLogger
     ∷ (MonadIO μ, MonadBaseControl IO μ)
     ⇒ LoggerConfig
@@ -320,7 +331,9 @@ withLogger
     → (Logger a → μ α)
     → μ α
 withLogger config backend =
-        bracket (createLogger config backend) releaseLogger
+    bracket (createLogger config backend) (releaseLogger waitTimeout)
+  where
+    waitTimeout = Just 3000000
 
 -- | For simple cases, when the logger threshold and the logger scope is
 -- constant this function can be used to directly initialize a log function.
