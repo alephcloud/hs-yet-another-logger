@@ -110,7 +110,8 @@ Library
         text >= 1.2,
         trace >= 0.1,
         transformers >= 0.3,
-        transformers-base >= 0.4
+        transformers-base >= 0.4,
+        void >= 0.7
 
     ghc-options: -Wall
 

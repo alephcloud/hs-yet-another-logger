@@ -42,6 +42,7 @@ module System.Logger.Logger
 -- * Logger
 , Logger
 , withLogger
+, withLogger_
 , withLogFunction
 
 -- * LoggerT Monad Transformer

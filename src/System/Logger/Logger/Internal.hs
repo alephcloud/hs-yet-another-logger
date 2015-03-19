@@ -31,6 +31,7 @@
 -- module as an example and starting point.
 --
 
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -59,8 +60,10 @@ module System.Logger.Logger.Internal
 , loggerScope
 , loggerThreshold
 , createLogger
+, createLogger_
 , releaseLogger
 , withLogger
+, withLogger_
 , loggCtx
 , withLogFunction
 
@@ -72,6 +75,7 @@ module System.Logger.Logger.Internal
 
 import Configuration.Utils hiding (Lens', Error)
 
+import Control.Concurrent (threadDelay)
 import Control.Concurrent.Async
 -- FIXME: use a better data structure with non-amortized complexity bounds
 import Control.Monad.STM
@@ -88,11 +92,15 @@ import Control.Monad.Unicode
 import Data.Monoid.Unicode
 import qualified Data.Text as T
 import Data.Typeable
+import qualified Data.Text as T
+import qualified Data.Text.IO as T (hPutStrLn)
+import Data.Void
 
 import GHC.Generics
 
 import Prelude.Unicode
 
+import System.IO (stderr)
 import System.Timeout
 
 -- internal modules
@@ -113,6 +121,15 @@ data LoggerConfig = LoggerConfig
         -- ^ initial stack of log labels, can be extended later on
     , _loggerConfigPolicy ∷ !LogPolicy
         -- ^ how to deal with a congested logging pipeline
+    , _loggerConfigExceptionLimit ∷ !(Maybe Int)
+        -- ^ number of consecutive backend exception that can occur before the logger
+        -- raises an 'BackendToManyExceptions' exception. If this is 'Nothing'
+        -- the logger will discard all exceptions. For instance a value of @1@
+        -- means that an exception is raised when the second exception occurs.
+        -- A value of @0@ means that an exception is raised for each exception.
+    , _loggerConfigExceptionWait ∷ !(Maybe Int)
+        -- ^ number of microseconds to wait after an exception from the backend.
+        -- If this is 'Nothing' the logger won't wait at all after an exception.
     }
     deriving (Show, Read, Eq, Ord, Typeable, Generic)
 
@@ -128,14 +145,28 @@ loggerConfigScope = lens _loggerConfigScope $ \a b → a { _loggerConfigScope = 
 loggerConfigPolicy ∷ Lens' LoggerConfig LogPolicy
 loggerConfigPolicy = lens _loggerConfigPolicy $ \a b → a { _loggerConfigPolicy = b }
 
+loggerConfigExceptionLimit ∷ Lens' LoggerConfig (Maybe Int)
+loggerConfigExceptionLimit = lens _loggerConfigExceptionLimit $ \a b → a { _loggerConfigExceptionLimit = b }
+
+loggerConfigExceptionWait ∷ Lens' LoggerConfig (Maybe Int)
+loggerConfigExceptionWait = lens _loggerConfigExceptionWait $ \a b → a { _loggerConfigExceptionWait = b }
+
 instance NFData LoggerConfig
 
+-- | Default Logger configuration
+--
+-- The exception limit for backend exceptions is 10 and the wait time between
+-- exceptions is 1000. This means that in case of a defunctioned backend the
+-- logger will exist by throwing an exception after at least one second.
+--
 defaultLoggerConfig ∷ LoggerConfig
 defaultLoggerConfig = LoggerConfig
     { _loggerConfigQueueSize = 1000
     , _loggerConfigThreshold = Warn
     , _loggerConfigScope = []
     , _loggerConfigPolicy = LogPolicyDiscard
+    , _loggerConfigExceptionLimit = Just 10
+    , _loggerConfigExceptionWait = Just 1000
     }
 
 validateLoggerConfig ∷ ConfigValidation LoggerConfig λ
@@ -147,6 +178,8 @@ instance ToJSON LoggerConfig where
         , "log_level" .= _loggerConfigThreshold
         , "scope" .= _loggerConfigScope
         , "policy" .= _loggerConfigPolicy
+        , "exception_limit" .= _loggerConfigExceptionLimit
+        , "exception_wait" .= _loggerConfigExceptionWait
         ]
 
 instance FromJSON (LoggerConfig → LoggerConfig) where
@@ -155,6 +188,8 @@ instance FromJSON (LoggerConfig → LoggerConfig) where
         <*< loggerConfigThreshold ..: "log_level" × o
         <*< loggerConfigScope ..: "scope" × o
         <*< loggerConfigPolicy ..: "policy" × o
+        <*< loggerConfigExceptionLimit ..: "exception_limit" × o
+        <*< loggerConfigExceptionWait ..: "exception_wait" × o
 
 pLoggerConfig ∷ MParser LoggerConfig
 pLoggerConfig = pLoggerConfig_ ""
@@ -170,6 +205,14 @@ pLoggerConfig_ prefix = id
         ⊕ help "size of the internal logger queue"
     <*< loggerConfigThreshold .:: pLogLevel_ prefix
     <*< loggerConfigPolicy .:: pLogPolicy_ prefix
+    <*< loggerConfigExceptionLimit .:: fmap Just × option auto
+        × long (T.unpack prefix ⊕ "exception-limit")
+        ⊕ metavar "INT"
+        ⊕ help "maximal number of backend failures before and exception is raised"
+    <*< loggerConfigExceptionWait .:: fmap Just × option auto
+        × long (T.unpack prefix ⊕ "exception-wait")
+        ⊕ metavar "INT"
+        ⊕ help "time to wait after an backend failure occured"
 
 -- -------------------------------------------------------------------------- --
 -- Logger
@@ -223,15 +266,71 @@ loggerMissed ∷ Lens' (Logger a) (TVar Int)
 loggerMissed = lens _loggerMissed $ \a b → a { _loggerMissed = b }
 {-# INLINE loggerMissed #-}
 
+-- | Create a new logger. A logger created with this function must be released
+-- with a call to 'releaseLogger' and must not be used after it is released.
+--
+-- The logger calls the backend function exactly once for each log message. If
+-- the backend throws an exception, the message is discarded and the exception
+-- is dealt with as follows:
+--
+-- 1. The exception is logged. First it is attempt to log to the backend itself.
+--    If that fails, due to another exception, the incident is logged to an
+--    alternate log sink, usually @T.putStrLn@ or just @const (return ())@.
+--
+-- 2. The message is discarded. If the backend exception is of type
+--    'BackendTerminatedException' the exception is rethrown by the logger which
+--    causes the logger to exit. Otherwise the exception is appended to the
+--    exception list.
+--
+-- 3. If the length of the exception list exceeds a configurable threshold
+--    a 'BackendToManyExceptions' exception is thrown (which causes the logger
+--    to terminate).
+--
+-- 4. Otherwise the logger waits for a configurable amount of time before
+--    proceeding.
+--
+-- 5. The next time the backend returns without throwing an exception the
+--    exception list is reset to @[]@.
+--
+-- Backends are expected to implement there own retry logic if required.
+-- Backends may base their behavoir on the 'LogPolicy' that is effective for a
+-- given message. Please refer to the documentation of 'LoggerBackend' for
+-- more details about how to implement and backend.
+--
+-- Backends are called synchronously. Backends authors must thus ensure that a
+-- backend returns promptly in accordance with the 'LogPolicy' and the size of
+-- the logger queue. For more elaborate failover strategies, such as batching
+-- retried messages with the delivery of new messages, backends may implement
+-- there only internal queue.
+--
+-- Exceptions of type 'BlockedIndefinitelyOnSTM' and 'NestedAtomically' are
+-- rethrowin immediately. Those exceptions indicate a bug in the code due to
+-- unsafe usage of 'createLogger'. This exceptions shouldn't be possible when
+-- 'withLogger' is used to provide the logger and and the reference to the
+-- logger isn't used outside the scope of the bracket.
+--
 createLogger
     ∷ MonadIO μ
     ⇒ LoggerConfig
     → LoggerBackend a
     → μ (Logger a)
-createLogger LoggerConfig{..} backend = liftIO $ do
+createLogger = createLogger_ (T.hPutStrLn stderr)
+
+-- | A version of 'createLogger' that takes as an extra argument
+-- a function for logging errors in the logging system.
+--
+createLogger_
+    ∷ MonadIO μ
+    ⇒ (T.Text → IO ())
+        -- ^ alternate sink for logging exceptions in the logger itself.
+    → LoggerConfig
+    → LoggerBackend a
+    → μ (Logger a)
+createLogger_ errLogFun LoggerConfig{..} backend = liftIO $ do
     queue ← newTBMQueueIO _loggerConfigQueueSize
     missed ← newTVarIO 0
-    worker ← backendWorker backend queue missed
+    worker ← backendWorker errLogFun _loggerConfigExceptionLimit _loggerConfigExceptionWait backend queue missed
+    link worker
     return $ Logger
         { _loggerQueue = queue
         , _loggerWorker = worker
@@ -241,27 +340,64 @@ createLogger LoggerConfig{..} backend = liftIO $ do
         , _loggerMissed = missed
         }
 
--- FIXME: make this more reliable
+-- | A backend worker.
 --
--- We must deal better with exceptions thrown by the backend: we should
--- use some reasonable re-spawn logic. Right now there is the risk of a
--- busy loop.
+-- The only way for this function to exist without an exception is when
+-- the interal logger queue is closed through a call to 'releaseLogger'.
 --
 backendWorker
-    ∷ LoggerBackend a
+    ∷ (T.Text → IO ())
+        -- ^ alternate sink for logging exceptions in the logger itself.
+    → Maybe Int
+        -- ^ number of consecutive backend exception that can occur before the logger
+        -- to raises an 'BackendToManyExceptions' exception. If this is 'Nothing'
+        -- the logger will discard all exceptions. For instance a value of @1@
+        -- means that an exception is raised when the second exception occurs.
+        -- A value of @0@ means that an exception is raised for each exception.
+    → Maybe Int
+        -- ^ number of microseconds to wait after an exception from the backend.
+        -- If this is 'Nothing' the logger won't wait at all after an exception.
+    → LoggerBackend a
     → LoggerQueue a
     → TVar Int
     → IO (Async ())
-backendWorker backend queue missed = async $ go `catchAny` \e → do
-    -- chances are that this fails, too...
-    (backend ∘ Left $ backendErrorMsg (sshow e)) `catchAny` (const $ return ())
-    go
+backendWorker errLogFun errLimit errWait backend queue missed = async $ go []
   where
-    go = atomically readMsg ≫= \case
-        -- when the queue is closed and empty the backendWorker returns
+
+    -- we assume that 'BlockedIndefinitelyOnSTM' and 'NestedAtomically' are the
+    -- only exceptions beside asynchronous exceptions that can be thrown by
+    -- @atomically readMsg@.
+    --
+    go errList = atomically readMsg ≫= \case
+
+        -- When the queue is closed and empty the backendWorker returns.
+        -- This is the only way for backendWorker to exist without an exception.
         Nothing → return ()
-        -- When there are still messages to process the backendWorker loops
-        Just msg → backend msg ≫ go
+
+        -- call backend for the message and loop
+        Just msg → runBackend errList msg ≫= go
+
+    runBackend errList msg = (backend msg ≫ return []) `catchAny` \e → do
+
+        -- try to log exception to backend
+        let errMsg = backendErrorMsg (sshow e)
+        backend (Left errMsg) `catchAny` \_ →
+            -- log exception to alternate sink
+            errLogFun (errLogMsg errMsg) `catchAny` \_ →
+                -- discard exception log
+                return ()
+
+        -- decide how to proceed in case of an error
+        case fromException e of
+            Just (BackendTerminatedException _ ∷ LoggerException Void) → throwIO e
+            _ → do
+                maybe (return ()) threadDelay errWait
+                let errList' = e:errList
+                case errLimit of
+                    Nothing → return []
+                    Just n
+                        | length errList' > n → throwIO $ BackendToManyExceptions (reverse errList')
+                        | otherwise → return errList'
 
     -- As long as the queue is not closed and empty this retries until
     -- a new message arrives
@@ -281,11 +417,21 @@ backendWorker backend queue missed = async $ go `catchAny` \e → do
         , _logMsgScope = [("system", "logger")]
         }
 
+    -- A log message that informs about an error in the backend
     backendErrorMsg e = LogMessage
         { _logMsg = e
         , _logMsgLevel = Error
         , _logMsgScope = [("system", "logger"), ("component", "backend")]
         }
+
+    -- format a log message that is written to the error sink
+    errLogMsg LogMessage{..} = T.unwords
+        [ "[" ⊕ logLevelText _logMsgLevel ⊕ "]"
+        , formatScope _logMsgScope
+        , _logMsg
+        ]
+    formatScope scope = "[" ⊕ T.intercalate "," (map formatLabel scope) ⊕ "]"
+    formatLabel (k,v) = "(" ⊕ k ⊕ "," ⊕ v ⊕ ")"
 
 releaseLogger
     ∷ MonadIO μ
@@ -324,14 +470,30 @@ releaseLogger t Logger{..} = liftIO $ do
 -- >  where
 -- >    waitTimeout = Just 3000000
 --
+-- For detailed information about how backends are executed refer
+-- to the documentation of 'createLogger'.
+--
 withLogger
     ∷ (MonadIO μ, MonadBaseControl IO μ)
     ⇒ LoggerConfig
     → LoggerBackend a
     → (Logger a → μ α)
     → μ α
-withLogger config backend =
-    bracket (createLogger config backend) (releaseLogger waitTimeout)
+withLogger = withLogger_ (T.hPutStrLn stderr)
+
+-- | A version of 'withLogger' that takes as an extra argument
+-- a function for logging errors in the logging system.
+--
+withLogger_
+    ∷ (MonadIO μ, MonadBaseControl IO μ)
+    ⇒ (T.Text → IO ())
+        -- ^ alternate sink for logging exceptions in the logger itself.
+    → LoggerConfig
+    → LoggerBackend a
+    → (Logger a → μ α)
+    → μ α
+withLogger_ errLogFun config backend =
+    bracket (createLogger_ errLogFun config backend) (releaseLogger waitTimeout)
   where
     waitTimeout = Just 3000000
 
@@ -348,12 +510,6 @@ withLogFunction config backend f = withLogger config backend $ f ∘ loggCtx
 
 -- -------------------------------------------------------------------------- --
 -- Log Function
-
-data LoggerException a
-    = QueueFullException (LogMessage a)
-    deriving (Show, Eq, Ord, Typeable, Generic)
-
-instance (Typeable a, Show a) ⇒ Exception (LoggerException a)
 
 -- Log a message with the given logger context
 --
