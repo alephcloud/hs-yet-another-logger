@@ -488,26 +488,26 @@ instance (MonadLog a m, MonadTransControl t, Monad n, n ~ (t m)) ⇒ MonadLog a 
 -- MonadLogIO
 
 instance (MonadLog a (ReaderT σ m), MonadLogIO a m) ⇒ MonadLogIO a (ReaderT σ m) where
-    logFunIO= lift logFunIO
+    logFunIO = lift logFunIO
     {-# INLINE logFunIO #-}
 
 instance (Monoid σ, MonadLogIO a m) ⇒ MonadLogIO a (WriterT σ m) where
-    logFunIO= lift logFunIO
+    logFunIO = lift logFunIO
     {-# INLINE logFunIO #-}
 
 instance (MonadLogIO a m) ⇒ MonadLogIO a (ExceptT ε m) where
-    logFunIO= lift logFunIO
+    logFunIO = lift logFunIO
     {-# INLINE logFunIO #-}
 
 instance (MonadLogIO a m) ⇒ MonadLogIO a (StateT σ m) where
-    logFunIO= lift logFunIO
+    logFunIO = lift logFunIO
     {-# INLINE logFunIO #-}
 
 instance (MonadLogIO a m) ⇒ MonadLogIO a (TraceT t e m) where
-    logFunIO= lift logFunIO
+    logFunIO = lift logFunIO
     {-# INLINE logFunIO #-}
 
 instance (MonadLogIO a m) ⇒ MonadLogIO a (EitherT σ m) where
-    logFunIO= lift logFunIO
+    logFunIO = lift logFunIO
     {-# INLINE logFunIO #-}
 
