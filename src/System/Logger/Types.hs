@@ -47,12 +47,14 @@ module System.Logger.Types
 , logLevelText
 , readLogLevel
 , pLogLevel
+, pLogLevel_
 
 -- * LogPolicy
 , LogPolicy(..)
 , logPolicyText
 , readLogPolicy
 , pLogPolicy
+, pLogPolicy_
 
 -- * LogLabel
 , LogLabel
@@ -154,8 +156,14 @@ instance FromJSON LogLevel where
     parseJSON = withText "LogLevel" $ either fail return ∘ readLogLevel
 
 pLogLevel ∷ O.Parser LogLevel
-pLogLevel = option (eitherReader readLogLevel)
-    × long "loglevel"
+pLogLevel = pLogLevel_ ""
+
+pLogLevel_
+    ∷ T.Text
+        -- ^ prefix for the command line options.
+    → O.Parser LogLevel
+pLogLevel_ prefix = option (eitherReader readLogLevel)
+    × long (T.unpack prefix ⊕ "loglevel")
     ⊕ metavar "quiet|error|warn|info|debug"
     ⊕ help "threshold for log messages"
 
@@ -197,8 +205,14 @@ instance FromJSON LogPolicy where
     parseJSON = withText "LogPolicy" $ either fail return ∘ readLogPolicy
 
 pLogPolicy ∷ O.Parser LogPolicy
-pLogPolicy = option (eitherReader readLogPolicy)
-    × long "log-policy"
+pLogPolicy = pLogPolicy_ ""
+
+pLogPolicy_
+    ∷ T.Text
+        -- ^ prefix for the command line options.
+    → O.Parser LogPolicy
+pLogPolicy_ prefix = option (eitherReader readLogPolicy)
+    × long (T.unpack prefix ⊕ "log-policy")
     ⊕ metavar "block|raise|discard"
     ⊕ help "how to deal with a congested logging pipeline"
 

@@ -59,6 +59,7 @@ module System.Logger.Logger
 , defaultLoggerConfig
 , validateLoggerConfig
 , pLoggerConfig
+, pLoggerConfig_
 
 ) where
 
