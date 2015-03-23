@@ -70,6 +70,7 @@ module System.Logger.Logger.Internal
 , withLogger_
 , loggCtx
 , withLogFunction
+, withLogFunction_
 
 -- * LoggerT Monad Transformer
 , LoggerT
@@ -517,7 +518,21 @@ withLogFunction
     → LoggerBackend a
     → (LogFunctionIO a → μ α)
     → μ α
-withLogFunction config backend f = withLogger config backend $ f ∘ loggCtx
+withLogFunction = withLogFunction_ (T.hPutStrLn stderr)
+
+-- | For simple cases, when the logger threshold and the logger scope is
+-- constant this function can be used to directly initialize a log function.
+--
+withLogFunction_
+    ∷ (Show a, Typeable a, NFData a, MonadIO μ, MonadBaseControl IO μ)
+    ⇒ (T.Text → IO ())
+        -- ^ alternate sink for logging exceptions in the logger itself.
+    → LoggerConfig
+    → LoggerBackend a
+    → (LogFunctionIO a → μ α)
+    → μ α
+withLogFunction_ errLogFun config backend f =
+    withLogger_ errLogFun config backend $ f ∘ loggCtx
 
 -- -------------------------------------------------------------------------- --
 -- Log Function
