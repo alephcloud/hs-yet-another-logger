@@ -50,6 +50,9 @@ module System.Logger.Logger.Internal
 , loggerConfigQueueSize
 , loggerConfigThreshold
 , loggerConfigScope
+, loggerConfigPolicy
+, loggerConfigExceptionLimit
+, loggerConfigExceptionWait
 , defaultLoggerConfig
 , validateLoggerConfig
 , pLoggerConfig
