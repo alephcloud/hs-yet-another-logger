@@ -354,6 +354,10 @@ createLogger_ errLogFun LoggerConfig{..} backend = liftIO $ do
     queue ← newTBMQueueIO _loggerConfigQueueSize
     missed ← newTVarIO 0
     worker ← backendWorker errLogFun _loggerConfigExceptionLimit _loggerConfigExceptionWait backend queue missed
+    -- we link the worker to the calling thread. This way all exception from
+    -- the logger are rethrown. This includes asynchronous exceptions, but
+    -- since the constructors of 'Logger' are not exported no external
+    -- code could throw an asynchronous exception to this thread.
     link worker
     return $ Logger
         { _loggerQueue = queue
@@ -386,7 +390,8 @@ backendWorker
     → LoggerQueue a
     → TVar Int
     → IO (Async ())
-backendWorker errLogFun errLimit errWait backend queue missed = async $ go []
+backendWorker errLogFun errLimit errWait backend queue missed = mask_ $
+    asyncWithUnmask $ \umask → umask (go []) `catch` \(_ ∷ LoggerKilled) → return ()
   where
 
     -- we assume that 'BlockedIndefinitelyOnSTM' and 'NestedAtomically' are the
@@ -458,6 +463,17 @@ backendWorker errLogFun errLimit errWait backend queue missed = async $ go []
     formatScope scope = "[" ⊕ T.intercalate "," (map formatLabel scope) ⊕ "]"
     formatLabel (k,v) = "(" ⊕ k ⊕ "," ⊕ v ⊕ ")"
 
+-- | An Exception that is used internally to kill the logger without killing
+-- the calling thread.
+--
+-- In 'createLogger' the worker 'Async' is 'link'ed to the calling
+-- thread. Thus, when 'releaseLogger' calls 'cancel' on that 'Async'
+-- the 'ThreadKilled' exception would be rethrown and kill the thread that
+-- called 'cancel'.
+--
+data LoggerKilled = LoggerKilled deriving (Show, Typeable)
+instance Exception LoggerKilled
+
 releaseLogger
     ∷ MonadIO μ
     ⇒ Logger a
@@ -465,7 +481,7 @@ releaseLogger
 releaseLogger Logger{..} = liftIO $ do
     atomically $ closeTBMQueue _loggerQueue
     maybe id (\x → void ∘ timeout x) _loggerExitTimeout $ wait _loggerWorker
-    cancel _loggerWorker
+    cancelWith _loggerWorker LoggerKilled
 
 -- | Provide a computation with a 'Logger'.
 --
