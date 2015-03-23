@@ -401,7 +401,7 @@ backendWorker errLogFun errLimit errWait backend queue missed = mask_ $
     go errList = atomically readMsg ≫= \case
 
         -- When the queue is closed and empty the backendWorker returns.
-        -- This is the only way for backendWorker to exist without an exception.
+        -- This is the only way for backendWorker to exit without an exception.
         Nothing → return ()
 
         -- call backend for the message and loop
