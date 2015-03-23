@@ -119,7 +119,7 @@ noBackendTests = testGroup "no backend" ∘ map tc
     tc args = testCaseSteps (show args) $ \logLogStr →
         catchAny
             (noBackendLoggerTest (logLogStr ∘ T.unpack) args)
-            (\e → assertString $ "exception: " ⊕ show e)
+            (\e → assertString $ "unexpected exception: " ⊕ show e)
 
 -- Buggy Backend that calls 'BackendTerminatedException'.
 --
@@ -150,7 +150,7 @@ buggyRecoverBackendTests m n =
         do
             buggyBackendLoggerTest exception (\x → x `mod` n <= m) (logLogStr ∘ T.unpack) args
         `catchAny` \e →
-            assertString $ "exception: " ⊕ show e
+            assertString $ "test: unexpected exception: " ⊕ show e
     exception = BuggyBackendException
 
 -- | Buggy Backend that calls some exception.
@@ -162,17 +162,14 @@ buggyNoRecoverBackendTests m n =
     testGroup ("buggy no recover backend " ⊕ sshow m ⊕ " " ⊕ sshow n) ∘ map tc
   where
     tc args = testCaseSteps (show args) $ \logLogStr →
-        (do
+        do
             buggyBackendLoggerTest exception (\x → x `mod` n <= m) (logLogStr ∘ T.unpack) args
             assertString $ "Missing expected exception: " ⊕ sshow exception
-        `catch` \(e ∷ LoggerException Void) → do
-            logLogStr $ "caught:" ⊕ sshow e
-            case e of
-                BackendToManyExceptions (e0:_) → case fromException e0 of
-                    Just BuggyBackendException → logLogStr $ "test: expected exception: " ⊕ sshow e
-                    _ → throwIO e
-                _ → throwIO e)
-        `catchAny` \e → logLogStr $ "caught any: " ⊕ sshow e
+        `catch` \(e ∷ LoggerException Void) → case e of
+            BackendToManyExceptions (e0:_) → case fromException e0 of
+                Just BuggyBackendException → logLogStr $ "test: expected exception: " ⊕ sshow e
+                _ → throwIO e
+            _ → throwIO e
     exception = BuggyBackendException
 
 -- -------------------------------------------------------------------------- --
@@ -228,7 +225,8 @@ noBackendLoggerTest
     → IO ()
 noBackendLoggerTest logLog TestParams{..} =
     nobackendLogger logLog config backendDelay $ \logFun →
-        testClients logFun `catchAny` \e → logLog ("exception in client: " ⊕ sshow e)
+        testClients logFun `catchAny` \e →
+            logLog $ "unexpected exception in client: " ⊕ sshow e
   where
     testClients logFun = do
         s ← replicateM threadsN .
@@ -269,7 +267,8 @@ buggyBackendLoggerTest
     → IO ()
 buggyBackendLoggerTest exception isException logLog TestParams{..} =
     buggyBackendLogger exception isException logLog config backendDelay $ \logFun →
-        testClients logFun `catchAny` \e → logLog ("exception in client: " ⊕ sshow e)
+        testClients logFun `catchAny` \e →
+            logLog $ "unexpected exception in client: " ⊕ sshow e
   where
     testClients logFun = do
         s ← replicateM threadsN .
