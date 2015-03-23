@@ -273,7 +273,7 @@ logMsgScope = lens _logMsgScope $ \a b → a { _logMsgScope = b }
 instance NFData a ⇒ NFData (LogMessage a)
 
 -- | This is given to logger when it is created. It formats and delivers
--- individual log messages synchronously. The backend is called once ofr each
+-- individual log messages synchronously. The backend is called once for each
 -- log message (that meets the required log level).
 --
 -- The type parameter @a@ is expected to provide instances for 'Show'
@@ -295,7 +295,7 @@ instance NFData a ⇒ NFData (LogMessage a)
 -- harder in case of 'LogPolicyBlock'.
 --
 -- TODO there may be scenarios where chunked processing is beneficial. While
--- this can be done in a closure of this function a more direct support might
+-- this can be done in a closure of this function, more direct support might
 -- be desirable.
 --
 type LoggerBackend a = Either (LogMessage T.Text) (LogMessage a) → IO ()

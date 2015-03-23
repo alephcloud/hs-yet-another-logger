@@ -328,9 +328,9 @@ loggerExitTimeout = lens _loggerExitTimeout $ \a b → a { _loggerExitTimeout = 
 -- there only internal queue.
 --
 -- Exceptions of type 'BlockedIndefinitelyOnSTM' and 'NestedAtomically' are
--- rethrowin immediately. Those exceptions indicate a bug in the code due to
+-- rethrown immediately. Those exceptions indicate a bug in the code due to
 -- unsafe usage of 'createLogger'. This exceptions shouldn't be possible when
--- 'withLogger' is used to provide the logger and and the reference to the
+-- 'withLogger' is used to provide the logger and the reference to the
 -- logger isn't used outside the scope of the bracket.
 --
 createLogger
