@@ -53,6 +53,7 @@ module System.Logger.Logger.Internal
 , loggerConfigPolicy
 , loggerConfigExceptionLimit
 , loggerConfigExceptionWait
+, loggerConfigExitTimeout
 , defaultLoggerConfig
 , validateLoggerConfig
 , pLoggerConfig
@@ -133,6 +134,9 @@ data LoggerConfig = LoggerConfig
     , _loggerConfigExceptionWait ∷ !(Maybe Int)
         -- ^ number of microseconds to wait after an exception from the backend.
         -- If this is 'Nothing' the logger won't wait at all after an exception.
+    , _loggerConfigExitTimeout ∷ !(Maybe Int)
+        -- ^ timeout in microseconds for the logger to flush the queue and
+        -- deliver all remaining log messages on termination.
     }
     deriving (Show, Read, Eq, Ord, Typeable, Generic)
 
@@ -154,6 +158,9 @@ loggerConfigExceptionLimit = lens _loggerConfigExceptionLimit $ \a b → a { _lo
 loggerConfigExceptionWait ∷ Lens' LoggerConfig (Maybe Int)
 loggerConfigExceptionWait = lens _loggerConfigExceptionWait $ \a b → a { _loggerConfigExceptionWait = b }
 
+loggerConfigExitTimeout ∷ Lens' LoggerConfig (Maybe Int)
+loggerConfigExitTimeout = lens _loggerConfigExitTimeout $ \a b → a { _loggerConfigExitTimeout = b }
+
 instance NFData LoggerConfig
 
 -- | Default Logger configuration
@@ -161,6 +168,8 @@ instance NFData LoggerConfig
 -- The exception limit for backend exceptions is 10 and the wait time between
 -- exceptions is 1000. This means that in case of a defunctioned backend the
 -- logger will exist by throwing an exception after at least one second.
+-- When the logger is terminated it is granted 1 second to flush the queue
+-- and deliver all remaining log messages.
 --
 defaultLoggerConfig ∷ LoggerConfig
 defaultLoggerConfig = LoggerConfig
@@ -170,6 +179,7 @@ defaultLoggerConfig = LoggerConfig
     , _loggerConfigPolicy = LogPolicyDiscard
     , _loggerConfigExceptionLimit = Just 10
     , _loggerConfigExceptionWait = Just 1000
+    , _loggerConfigExitTimeout = Just 1000000
     }
 
 validateLoggerConfig ∷ ConfigValidation LoggerConfig λ
@@ -183,6 +193,7 @@ instance ToJSON LoggerConfig where
         , "policy" .= _loggerConfigPolicy
         , "exception_limit" .= _loggerConfigExceptionLimit
         , "exception_wait" .= _loggerConfigExceptionWait
+        , "exit_timeout" .= _loggerConfigExitTimeout
         ]
 
 instance FromJSON (LoggerConfig → LoggerConfig) where
@@ -193,6 +204,7 @@ instance FromJSON (LoggerConfig → LoggerConfig) where
         <*< loggerConfigPolicy ..: "policy" × o
         <*< loggerConfigExceptionLimit ..: "exception_limit" × o
         <*< loggerConfigExceptionWait ..: "exception_wait" × o
+        <*< loggerConfigExitTimeout ..: "exit_timeout" × o
 
 pLoggerConfig ∷ MParser LoggerConfig
 pLoggerConfig = pLoggerConfig_ ""
@@ -216,6 +228,10 @@ pLoggerConfig_ prefix = id
         × long (T.unpack prefix ⊕ "exception-wait")
         ⊕ metavar "INT"
         ⊕ help "time to wait after an backend failure occured"
+    <*< loggerConfigExitTimeout .:: fmap Just × option auto
+        × long (T.unpack prefix ⊕ "exit-timeout")
+        ⊕ metavar "INT"
+        ⊕ help "timeout for flushing the log message queue on exit"
 
 -- -------------------------------------------------------------------------- --
 -- Logger
@@ -242,6 +258,7 @@ data Logger a = Logger
     , _loggerScope ∷ !LogScope
     , _loggerPolicy ∷ !LogPolicy
     , _loggerMissed ∷ !(TVar Int)
+    , _loggerExitTimeout ∷ !(Maybe Int)
     }
     deriving (Typeable, Generic)
 
@@ -268,6 +285,10 @@ loggerPolicy = lens _loggerPolicy $ \a b → a { _loggerPolicy = b }
 loggerMissed ∷ Lens' (Logger a) (TVar Int)
 loggerMissed = lens _loggerMissed $ \a b → a { _loggerMissed = b }
 {-# INLINE loggerMissed #-}
+
+loggerExitTimeout ∷ Lens' (Logger a) (Maybe Int)
+loggerExitTimeout = lens _loggerExitTimeout $ \a b → a { _loggerExitTimeout = b }
+{-# INLINE loggerExitTimeout #-}
 
 -- | Create a new logger. A logger created with this function must be released
 -- with a call to 'releaseLogger' and must not be used after it is released.
@@ -341,6 +362,7 @@ createLogger_ errLogFun LoggerConfig{..} backend = liftIO $ do
         , _loggerScope = _loggerConfigScope
         , _loggerPolicy = _loggerConfigPolicy
         , _loggerMissed = missed
+        , _loggerExitTimeout = _loggerConfigExitTimeout
         }
 
 -- | A backend worker.
@@ -438,13 +460,11 @@ backendWorker errLogFun errLimit errWait backend queue missed = async $ go []
 
 releaseLogger
     ∷ MonadIO μ
-    ⇒ Maybe Int
-        -- ^ Timeout to wait for the logger to finish (microseconds)
-    → Logger a
+    ⇒ Logger a
     → μ ()
-releaseLogger t Logger{..} = liftIO $ do
+releaseLogger Logger{..} = liftIO $ do
     atomically $ closeTBMQueue _loggerQueue
-    maybe id (\x → void ∘ timeout x) t $ wait _loggerWorker
+    maybe id (\x → void ∘ timeout x) _loggerExitTimeout $ wait _loggerWorker
     cancel _loggerWorker
 
 -- | Provide a computation with a 'Logger'.
@@ -463,15 +483,6 @@ releaseLogger t Logger{..} = liftIO $ do
 -- >  where
 -- >    config = defaultLogConfig
 -- >        & logConfigLogger ∘ loggerConfigThreshold .~ level
---
--- On termination the main threads waits up to 3 seconds for the the logger
--- to flush the log queue and deliver all log messages. You can adjust
--- this value by using 'createLogger' and 'releaseLogger' directly:
---
--- > withLogger config backend =
--- >     bracket (createLogger config backend) (releaseLogger waitTimeout)
--- >  where
--- >    waitTimeout = Just 3000000
 --
 -- For detailed information about how backends are executed refer
 -- to the documentation of 'createLogger'.
@@ -496,9 +507,7 @@ withLogger_
     → (Logger a → μ α)
     → μ α
 withLogger_ errLogFun config backend =
-    bracket (createLogger_ errLogFun config backend) (releaseLogger waitTimeout)
-  where
-    waitTimeout = Just 3000000
+    bracket (createLogger_ errLogFun config backend) releaseLogger
 
 -- | For simple cases, when the logger threshold and the logger scope is
 -- constant this function can be used to directly initialize a log function.

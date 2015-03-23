@@ -60,6 +60,7 @@ module System.Logger.Logger
 , loggerConfigPolicy
 , loggerConfigExceptionLimit
 , loggerConfigExceptionWait
+, loggerConfigExitTimeout
 , defaultLoggerConfig
 , validateLoggerConfig
 , pLoggerConfig
