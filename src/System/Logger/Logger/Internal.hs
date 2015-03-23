@@ -96,7 +96,6 @@ import Control.Monad.Unicode
 import Data.Monoid.Unicode
 import qualified Data.Text as T
 import Data.Typeable
-import qualified Data.Text as T
 import qualified Data.Text.IO as T (hPutStrLn)
 import Data.Void
 
