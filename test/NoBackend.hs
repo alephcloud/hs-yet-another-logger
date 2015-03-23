@@ -80,19 +80,9 @@ data TestParams = TestParams
 
 tests ∷ TestTree
 tests = testGroup "trivial backend"
-    [ noBackendTests
-        [ TestParams 10 100 100 1000 25 1 (Just t)
-        , TestParams 1000 100 100 10000 25 1 (Just t)
-        , TestParams 10000000 100 100 10000 25 1 (Just t)
-
-        , TestParams 10 100 100 1000 10 1 (Just t)
-        , TestParams 1000 100 100 10000 10 1 (Just t)
-        , TestParams 10000000 100 100 10000 10 1 (Just t)
-
-        , TestParams 10 100 100 1000 1 5 (Just t)
-        , TestParams 1000 100 100 10000 1 5 (Just t)
-        , TestParams 10000000 100 100 10000 1 5 (Just t)
-        ]
+    [ noBackendTestsTimeout 1
+    , noBackendTestsTimeout 100
+    , noBackendTestsTimeout 100000000
     , buggyBackendTests 11 10
         [ TestParams 10 10 100 1000 25 1 (Just 10)
         , TestParams 1000 100 100 10000 25 1 (Just 10)
@@ -111,7 +101,19 @@ tests = testGroup "trivial backend"
         ]
     ]
   where
-    t = 1
+    noBackendTestsTimeout t = noBackendTests
+        [ TestParams 10 100 100 1000 25 1 (Just t)
+        , TestParams 1000 100 100 10000 25 1 (Just t)
+        , TestParams 10000000 100 100 10000 25 1 (Just t)
+
+        , TestParams 10 100 100 1000 10 1 (Just t)
+        , TestParams 1000 100 100 10000 10 1 (Just t)
+        , TestParams 10000000 100 100 10000 10 1 (Just t)
+
+        , TestParams 10 100 100 1000 1 5 (Just t)
+        , TestParams 1000 100 100 10000 1 5 (Just t)
+        , TestParams 10000000 100 100 10000 1 5 (Just t)
+        ]
 
 noBackendTests ∷ [TestParams] → TestTree
 noBackendTests = testGroup "no backend" ∘ map tc
