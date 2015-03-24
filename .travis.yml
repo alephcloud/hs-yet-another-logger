@@ -6,5 +6,5 @@ install:
     - travis_retry cabal install --only-dependencies --enable-tests
 
 script:
-    - cabal configure && cabal build && cabal test
+    - cabal configure --enable-tests && cabal build && cabal test
 
