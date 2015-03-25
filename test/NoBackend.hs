@@ -100,7 +100,9 @@ tests = testGroup "trivial backend"
         [ TestParams 1000 10 100 100 100 1 (Just 10)
         ]
     , buggyNoRecoverBackendTests 10 15
-        [ TestParams 1000 10 100 100 100 1 (Just 10)
+        [ TestParams 1000 10 100 100 100 1 (Just 1000)
+        -- we give these tests some more time at termination to ensure that
+        -- the expected exceptions are actually thrown.
         ]
     ]
   where
@@ -166,9 +168,12 @@ buggyNoRecoverBackendTests ∷ Int → Int → [TestParams] → TestTree
 buggyNoRecoverBackendTests m n =
     testGroup ("buggy no recover backend " ⊕ sshow m ⊕ " " ⊕ sshow n) ∘ map tc
   where
-    tc args = testCaseSteps (sshow args) $ \logLogStr →
-        do
+    tc args = testCaseSteps (sshow args) $ \logLogStr → mask $ \umask → do
+        do umask $ do
             buggyBackendLoggerTest exception (\x → x `mod` n <= m) logLogStr args
+            -- Make sure to configure the exitWait and exceptionWait so that
+            -- the backend has enough time to deliver enough messages to trigger
+            -- and exception.
             assertString $ "Missing expected exception: " ⊕ sshow exception
         `catch` \(e ∷ LoggerException Void) → case e of
             BackendToManyExceptions (e0:_) → case fromException e0 of
@@ -283,6 +288,8 @@ buggyBackendLoggerTest exception isException logLog TestParams{..} =
         & loggerConfigThreshold .~ Debug
         & loggerConfigQueueSize .~ queueSize
         & loggerConfigExitTimeout .~ exitDelay
+        & loggerConfigExceptionLimit .~ Just 10
+        & loggerConfigExceptionWait .~ Just 100
 
 -- | A logger with the testBackend the throw exceptions.
 --
