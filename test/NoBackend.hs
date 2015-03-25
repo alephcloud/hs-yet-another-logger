@@ -7,7 +7,7 @@
 -- proprietary to PivotCloud and are protected by U.S. and Foreign law.
 
 -- |
--- Module: Main
+-- Module: NoBackend
 -- Copyright: Copyright (c) 2013-2015 PivotCloud, Inc. All Rights Reserved.
 -- License: All Rights Reserved, see LICENSE file of the package
 -- Maintainer: code@pivotmail.com
