@@ -123,18 +123,24 @@ test-suite tests
 
     other-modules:
         NoBackend
+        TastyTools
 
     build-depends:
         async >= 2.0,
         base == 4.*,
+        base-unicode-symbols >= 0.2,
+        configuration-tools >= 0.2.12,
         enclosed-exceptions >= 1.0,
         lens >= 4.7,
+        lifted-base >= 0.2,
+        tagged >= 0.7,
         tasty >= 0.10,
         tasty-hunit >= 0.9,
         text >= 1.2,
-        base-unicode-symbols >= 0.2,
-        yet-another-logger,
-        void
+        transformers >= 0.3,
+        transformers-base >= 0.4,
+        void >= 0.7,
+        yet-another-logger
 
     ghc-options: -Wall -threaded -with-rtsopts=-N
 

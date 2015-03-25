@@ -49,10 +49,13 @@ import GHC.Generics
 import Prelude.Unicode
 
 import Test.Tasty
-import Test.Tasty.HUnit
+import Test.Tasty.HUnit hiding (testCaseSteps)
 
 -- yet-another-logger
 import System.Logger
+
+-- internal
+import TastyTools
 
 -- -------------------------------------------------------------------------- --
 -- TestParams
@@ -118,9 +121,9 @@ tests = testGroup "trivial backend"
 noBackendTests ∷ [TestParams] → TestTree
 noBackendTests = testGroup "no backend" ∘ map tc
   where
-    tc args = testCaseSteps (show args) $ \logLogStr →
+    tc args = testCaseSteps (sshow args) $ \logLogStr →
         catchAny
-            (noBackendLoggerTest (logLogStr ∘ T.unpack) args)
+            (noBackendLoggerTest logLogStr args)
             (\e → assertString $ "unexpected exception: " ⊕ show e)
 
 -- Buggy Backend that calls 'BackendTerminatedException'.
@@ -129,13 +132,13 @@ buggyBackendTests ∷ Int → Int → [TestParams] → TestTree
 buggyBackendTests m n =
     testGroup ("buggy backend " ⊕ sshow m ⊕ " " ⊕ sshow n) ∘ map tc
   where
-    tc args = testCaseSteps (show args) $ \logLogStr →
+    tc args = testCaseSteps (sshow args) $ \logLogStr →
         do
-            buggyBackendLoggerTest exception (\x → x `mod` m <= n) (logLogStr ∘ T.unpack) args
+            buggyBackendLoggerTest exception (\x → x `mod` m <= n) logLogStr args
             assertString $ "Missing expected exception"
         `catch` \(e ∷ LoggerException Void) → case e of
             BackendTerminatedException e0 → case fromException e0 of
-                Just BuggyBackendException → logLogStr $ "test: expected exception: " ⊕ show e
+                Just BuggyBackendException → logLogStr $ "test: expected exception: " ⊕ sshow e
                 _ → throwIO e
             _ → throwIO e
     exception = BackendTerminatedException $ toException BuggyBackendException
@@ -148,9 +151,9 @@ buggyRecoverBackendTests ∷ Int → Int → [TestParams] → TestTree
 buggyRecoverBackendTests m n =
     testGroup ("buggy recover backend " ⊕ sshow m ⊕ " " ⊕ sshow n) ∘ map tc
   where
-    tc args = testCaseSteps (show args) $ \logLogStr →
+    tc args = testCaseSteps (sshow args) $ \logLogStr →
         do
-            buggyBackendLoggerTest exception (\x → x `mod` n <= m) (logLogStr ∘ T.unpack) args
+            buggyBackendLoggerTest exception (\x → x `mod` n <= m) logLogStr args
         `catchAny` \e →
             assertString $ "test: unexpected exception: " ⊕ show e
     exception = BuggyBackendException
@@ -163,9 +166,9 @@ buggyNoRecoverBackendTests ∷ Int → Int → [TestParams] → TestTree
 buggyNoRecoverBackendTests m n =
     testGroup ("buggy no recover backend " ⊕ sshow m ⊕ " " ⊕ sshow n) ∘ map tc
   where
-    tc args = testCaseSteps (show args) $ \logLogStr →
+    tc args = testCaseSteps (sshow args) $ \logLogStr →
         do
-            buggyBackendLoggerTest exception (\x → x `mod` n <= m) (logLogStr ∘ T.unpack) args
+            buggyBackendLoggerTest exception (\x → x `mod` n <= m) logLogStr args
             assertString $ "Missing expected exception: " ⊕ sshow exception
         `catch` \(e ∷ LoggerException Void) → case e of
             BackendToManyExceptions (e0:_) → case fromException e0 of
