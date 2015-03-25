@@ -136,7 +136,8 @@ data LoggerConfig = LoggerConfig
         -- If this is 'Nothing' the logger won't wait at all after an exception.
     , _loggerConfigExitTimeout ∷ !(Maybe Int)
         -- ^ timeout in microseconds for the logger to flush the queue and
-        -- deliver all remaining log messages on termination.
+        -- deliver all remaining log messages on termination. If this is 'Nothing'
+        -- termination of the logger blogs until all mesages are delivered.
     }
     deriving (Show, Read, Eq, Ord, Typeable, Generic)
 
@@ -259,6 +260,7 @@ data Logger a = Logger
     , _loggerPolicy ∷ !LogPolicy
     , _loggerMissed ∷ !(TVar Int)
     , _loggerExitTimeout ∷ !(Maybe Int)
+    , _loggerErrLogFunction ∷ !(T.Text → IO ())
     }
     deriving (Typeable, Generic)
 
@@ -289,6 +291,10 @@ loggerMissed = lens _loggerMissed $ \a b → a { _loggerMissed = b }
 loggerExitTimeout ∷ Lens' (Logger a) (Maybe Int)
 loggerExitTimeout = lens _loggerExitTimeout $ \a b → a { _loggerExitTimeout = b }
 {-# INLINE loggerExitTimeout #-}
+
+loggerErrLogFunction ∷ Lens' (Logger a) (T.Text → IO ())
+loggerErrLogFunction = lens _loggerErrLogFunction $ \a b → a { _loggerErrLogFunction = b }
+{-# INLINE loggerErrLogFunction #-}
 
 -- | Create a new logger. A logger created with this function must be released
 -- with a call to 'releaseLogger' and must not be used after it is released.
@@ -367,6 +373,7 @@ createLogger_ errLogFun LoggerConfig{..} backend = liftIO $ do
         , _loggerPolicy = _loggerConfigPolicy
         , _loggerMissed = missed
         , _loggerExitTimeout = _loggerConfigExitTimeout
+        , _loggerErrLogFunction = errLogFun
         }
 
 -- | A backend worker.
@@ -480,7 +487,10 @@ releaseLogger
     → μ ()
 releaseLogger Logger{..} = liftIO $ do
     atomically $ closeTBMQueue _loggerQueue
-    maybe id (\x → void ∘ timeout x) _loggerExitTimeout $ wait _loggerWorker
+    complete ← maybe (fmap Just) timeout _loggerExitTimeout $ wait _loggerWorker
+    case complete of
+        Nothing → _loggerErrLogFunction "logger: timeout while flushing queue; remaining messages are discarded"
+        Just _ → return ()
     cancelWith _loggerWorker LoggerKilled
 
 -- | Provide a computation with a 'Logger'.
