@@ -51,7 +51,7 @@ import Prelude.Unicode
 import Test.Tasty
 import Test.Tasty.HUnit
 
--- pc-directory
+-- yet-another-logger
 import System.Logger
 
 -- -------------------------------------------------------------------------- --
