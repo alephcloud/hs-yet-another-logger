@@ -42,7 +42,9 @@ module System.Logger.Logger
 -- * Logger
 , Logger
 , withLogger
+, withLogger_
 , withLogFunction
+, withLogFunction_
 
 -- * LoggerT Monad Transformer
 , LoggerT
@@ -56,6 +58,10 @@ module System.Logger.Logger
 , loggerConfigQueueSize
 , loggerConfigThreshold
 , loggerConfigScope
+, loggerConfigPolicy
+, loggerConfigExceptionLimit
+, loggerConfigExceptionWait
+, loggerConfigExitTimeout
 , defaultLoggerConfig
 , validateLoggerConfig
 , pLoggerConfig

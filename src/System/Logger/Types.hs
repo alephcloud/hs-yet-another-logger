@@ -25,6 +25,7 @@
 -- Stability: experimental
 --
 
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -60,6 +61,9 @@ module System.Logger.Types
 , LogLabel
 , LogScope
 
+-- * Logger Exception
+, LoggerException(..)
+
 -- * Logger Backend
 , LogMessage(..)
 , logMsg
@@ -87,6 +91,7 @@ module System.Logger.Types
 import Configuration.Utils hiding (Lens', Error)
 
 import Control.DeepSeq
+import Control.Exception
 import Control.Lens hiding ((.=))
 import Control.Monad.Base
 import Control.Monad.Except
@@ -105,6 +110,7 @@ import Data.String
 import qualified Data.Text as T
 import Data.Text.Lens
 import Data.Typeable
+import Data.Void
 
 import GHC.Generics
 
@@ -223,6 +229,18 @@ type LogLabel = (T.Text, T.Text)
 type LogScope = [LogLabel]
 
 -- -------------------------------------------------------------------------- --
+-- Logger Exception
+
+data LoggerException a where
+    QueueFullException ∷ LogMessage a → LoggerException a
+    BackendTerminatedException ∷ SomeException → LoggerException Void
+    BackendToManyExceptions ∷ [SomeException] → LoggerException Void
+    deriving (Typeable)
+
+deriving instance Show a ⇒ Show (LoggerException a)
+instance (Typeable a, Show a) ⇒ Exception (LoggerException a)
+
+-- -------------------------------------------------------------------------- --
 -- Backend
 
 -- | The Internal log message type.
@@ -255,20 +273,30 @@ logMsgScope = lens _logMsgScope $ \a b → a { _logMsgScope = b }
 instance NFData a ⇒ NFData (LogMessage a)
 
 -- | This is given to logger when it is created. It formats and delivers
--- individual log messages synchronously.
+-- individual log messages synchronously. The backend is called once for each
+-- log message (that meets the required log level).
 --
 -- The type parameter @a@ is expected to provide instances for 'Show'
 -- 'Typeable', and 'NFData'.
 --
--- The 'Left' values of the argument allows the generation of log messages
--- that are independent of the parameter @a@. The motivation for this is
--- reporting issues in Logging system itself, like a full logger queue
--- or providing statistics about the fill level of the queue. There may
--- be other uses of this, too.
+-- The 'Left' values of the argument allows the generation of log messages that
+-- are independent of the parameter @a@. The motivation for this is reporting
+-- issues in Logging system itself, like a full logger queue or providing
+-- statistics about the fill level of the queue. There may be other uses of
+-- this, too.
 --
--- TODO there may be scenarios where chunked processing is beneficial.
--- While this can be done in a closure of this function a more direct
--- support might be desirable.
+-- Backends that can fail are encouraged (but not forced) to take into account
+-- the 'LogPolicy' that is effective for a message. For instance, a backend may
+-- implement a reasonable retry logic for each message and then raise a
+-- 'BackendTerminatedException' in case the policy is 'LogPolicyBlock' or
+-- 'LogPolicyRaise' (thus causing the logger to exit immediately) and raise
+-- some other exception otherwise (thus discarding the message without causing
+-- the logger to not exit immediately). In addition a backend might retry
+-- harder in case of 'LogPolicyBlock'.
+--
+-- TODO there may be scenarios where chunked processing is beneficial. While
+-- this can be done in a closure of this function, more direct support might
+-- be desirable.
 --
 type LoggerBackend a = Either (LogMessage T.Text) (LogMessage a) → IO ()
 
