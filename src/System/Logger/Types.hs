@@ -234,7 +234,7 @@ type LogScope = [LogLabel]
 data LoggerException a where
     QueueFullException ∷ LogMessage a → LoggerException a
     BackendTerminatedException ∷ SomeException → LoggerException Void
-    BackendToManyExceptions ∷ [SomeException] → LoggerException Void
+    BackendTooManyExceptions ∷ [SomeException] → LoggerException Void
     deriving (Typeable)
 
 deriving instance Show a ⇒ Show (LoggerException a)

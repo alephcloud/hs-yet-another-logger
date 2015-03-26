@@ -127,7 +127,7 @@ data LoggerConfig = LoggerConfig
         -- ^ how to deal with a congested logging pipeline
     , _loggerConfigExceptionLimit ∷ !(Maybe Int)
         -- ^ number of consecutive backend exception that can occur before the logger
-        -- raises an 'BackendToManyExceptions' exception. If this is 'Nothing'
+        -- raises an 'BackendTooManyExceptions' exception. If this is 'Nothing'
         -- the logger will discard all exceptions. For instance a value of @1@
         -- means that an exception is raised when the second exception occurs.
         -- A value of @0@ means that an exception is raised for each exception.
@@ -313,7 +313,7 @@ loggerErrLogFunction = lens _loggerErrLogFunction $ \a b → a { _loggerErrLogFu
 --    exception list.
 --
 -- 3. If the length of the exception list exceeds a configurable threshold
---    a 'BackendToManyExceptions' exception is thrown (which causes the logger
+--    a 'BackendTooManyExceptions' exception is thrown (which causes the logger
 --    to terminate).
 --
 -- 4. Otherwise the logger waits for a configurable amount of time before
@@ -386,7 +386,7 @@ backendWorker
         -- ^ alternate sink for logging exceptions in the logger itself.
     → Maybe Int
         -- ^ number of consecutive backend exception that can occur before the logger
-        -- to raises an 'BackendToManyExceptions' exception. If this is 'Nothing'
+        -- to raises an 'BackendTooManyExceptions' exception. If this is 'Nothing'
         -- the logger will discard all exceptions. For instance a value of @1@
         -- means that an exception is raised when the second exception occurs.
         -- A value of @0@ means that an exception is raised for each exception.
@@ -433,7 +433,7 @@ backendWorker errLogFun errLimit errWait backend queue missed = mask_ $
                 case errLimit of
                     Nothing → return []
                     Just n
-                        | length errList' > n → throwIO $ BackendToManyExceptions (reverse errList')
+                        | length errList' > n → throwIO $ BackendTooManyExceptions (reverse errList')
                         | otherwise → return errList'
 
     -- As long as the queue is not closed and empty this retries until
