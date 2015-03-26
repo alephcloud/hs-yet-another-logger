@@ -162,7 +162,7 @@ buggyRecoverBackendTests m n =
 
 -- | Buggy Backend that calls some exception.
 --
--- The logger is expected to throw 'BackendToManyExceptions'.
+-- The logger is expected to throw 'BackendTooManyExceptions'.
 --
 buggyNoRecoverBackendTests ∷ Int → Int → [TestParams] → TestTree
 buggyNoRecoverBackendTests m n =
@@ -176,7 +176,7 @@ buggyNoRecoverBackendTests m n =
             -- and exception.
             assertString $ "Missing expected exception: " ⊕ sshow exception
         `catch` \(e ∷ LoggerException Void) → case e of
-            BackendToManyExceptions (e0:_) → case fromException e0 of
+            BackendTooManyExceptions (e0:_) → case fromException e0 of
                 Just BuggyBackendException → logLogStr $ "test: expected exception: " ⊕ sshow e
                 _ → throwIO e
             _ → throwIO e
