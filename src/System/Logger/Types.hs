@@ -172,6 +172,8 @@ data LogPolicy
     | LogPolicyBlock
     deriving (Show, Read, Eq, Ord, Bounded, Enum, Typeable, Generic)
 
+instance NFData LogPolicy
+
 logPolicyText ∷ IsString s ⇒ LogPolicy → s
 logPolicyText LogPolicyDiscard = "discard"
 logPolicyText LogPolicyRaise = "raise"
