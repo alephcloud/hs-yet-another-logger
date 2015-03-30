@@ -1,3 +1,14 @@
+0.1.1.1
+=======
+
+*   Add `NFData` instance for `LogPolicy`.
+
+0.1.1
+=====
+
+*   Added `MonadLogIO` for loggers that allow to extract a log
+    function of type `LogFunctionIO`.
+
 0.1
 ===
 
