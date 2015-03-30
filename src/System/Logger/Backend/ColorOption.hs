@@ -26,6 +26,7 @@
 -- An option that indicates whether ANSI color escapes shall
 -- be used in textual output.
 
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE LambdaCase #-}
@@ -43,13 +44,19 @@ module System.Logger.Backend.ColorOption
 , useColor
 ) where
 
+#ifndef MIN_VERSION_base
+#define MIN_VERSION_base(x,y,z) 1
+#endif
+
 import Configuration.Utils
 
 import Control.DeepSeq
 import Control.Monad.Except
 
 import qualified Data.CaseInsensitive as CI
+#if ! MIN_VERSION_base(4,8,0)
 import Data.Monoid
+#endif
 import Data.Monoid.Unicode
 import Data.String
 import qualified Data.Text as T
