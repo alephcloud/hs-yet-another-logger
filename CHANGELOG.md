@@ -1,3 +1,8 @@
+0.1.1.1
+=======
+
+*   Add `NFData` instance for `LogPolicy`.
+
 0.1.1
 =====
 
