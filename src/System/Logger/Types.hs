@@ -169,7 +169,7 @@ pLogLevel_
         -- ^ prefix for the command line options.
     → O.Parser LogLevel
 pLogLevel_ prefix = option (eitherReader readLogLevel)
-    × long (T.unpack prefix ⊕ "loglevel")
+    × long (T.unpack prefix ⊕ "log-level")
     ⊕ metavar "quiet|error|warn|info|debug"
     ⊕ help "threshold for log messages"
 

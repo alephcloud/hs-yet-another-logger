@@ -44,6 +44,9 @@
     a relatively long time to run all tests. In particular this an cause timeouts
     with travis-ci.
 
+*   Issue #14: the command line option for setting the log-level got fixed to be
+    spelled `--log-level` (instead of `--loglevel`).
+
 0.1.1
 =====
 
