@@ -1,7 +1,7 @@
 0.2
 ===
 
-*   Removed `MonadLogIO`.
+*   Removed `MonadLogIO`; `MonadBaseControl` should be used instead.
 
 *   Issue #16: add an argument to all command-line options parsers that
     adds a prefix to the command-line options.
