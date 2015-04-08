@@ -44,6 +44,8 @@ import qualified Data.Text as T
 import Data.Typeable
 import Data.Void
 
+import Numeric.Natural
+
 import GHC.Generics
 
 import Prelude.Unicode
@@ -61,19 +63,19 @@ import TastyTools
 -- TestParams
 
 data TestParams = TestParams
-    { queueSize ∷ !Int
+    { queueSize ∷ !Natural
         -- ^ queue size
-    , threadsN ∷ !Int
+    , threadsN ∷ !Natural
         -- ^ number of threads
-    , messageN ∷ !Int
+    , messageN ∷ !Natural
         -- ^ number of log message to write
-    , messageSize ∷ !Int
+    , messageSize ∷ !Natural
         -- ^ size of message
-    , frontendDelay ∷ !Int
+    , frontendDelay ∷ !Natural
         -- ^ delay between messages in microseconds
-    , backendDelay ∷ !Int
+    , backendDelay ∷ !Natural
         -- ^ write delay in microseconds
-    , exitDelay ∷ !(Maybe Int)
+    , exitDelay ∷ !(Maybe Natural)
         -- ^ exit timeout in microseconds
     }
     deriving (Show, Read, Eq, Ord, Typeable, Generic)
@@ -130,7 +132,7 @@ noBackendTests = testGroup "no backend" ∘ map tc
 
 -- Buggy Backend that calls 'BackendTerminatedException'.
 --
-buggyBackendTests ∷ Int → Int → [TestParams] → TestTree
+buggyBackendTests ∷ Natural → Natural → [TestParams] → TestTree
 buggyBackendTests m n =
     testGroup ("buggy backend " ⊕ sshow m ⊕ " " ⊕ sshow n) ∘ map tc
   where
@@ -149,7 +151,7 @@ buggyBackendTests m n =
 --
 -- The logger is expected to recover.
 --
-buggyRecoverBackendTests ∷ Int → Int → [TestParams] → TestTree
+buggyRecoverBackendTests ∷ Natural → Natural → [TestParams] → TestTree
 buggyRecoverBackendTests m n =
     testGroup ("buggy recover backend " ⊕ sshow m ⊕ " " ⊕ sshow n) ∘ map tc
   where
@@ -164,7 +166,7 @@ buggyRecoverBackendTests m n =
 --
 -- The logger is expected to throw 'BackendTooManyExceptions'.
 --
-buggyNoRecoverBackendTests ∷ Int → Int → [TestParams] → TestTree
+buggyNoRecoverBackendTests ∷ Natural → Natural → [TestParams] → TestTree
 buggyNoRecoverBackendTests m n =
     testGroup ("buggy no recover backend " ⊕ sshow m ⊕ " " ⊕ sshow n) ∘ map tc
   where
@@ -188,20 +190,20 @@ buggyNoRecoverBackendTests m n =
 -- | A thread that logs messages
 --
 testThread
-    ∷ Int
+    ∷ Natural
         -- ^ number of log message to write
-    → Int
+    → Natural
         -- ^ size of message
-    → Int
+    → Natural
         -- ^ delay between messages in microseconds
     → LogFunctionIO T.Text
     → IO ()
 testThread n s delayMicro logFun = do
-    void ∘ replicateM n $ do
-        threadDelay delayMicro
+    void ∘ replicateM (fromIntegral n) $ do
+        threadDelay (fromIntegral delayMicro)
         logFun Debug msg
   where
-    msg = T.replicate s "a"
+    msg = T.replicate (fromIntegral s) "a"
 
 -- | A backend that logs all messages with level at least Warning
 -- and discards all other messages.
@@ -213,18 +215,18 @@ testThread n s delayMicro logFun = do
 testBackend
     ∷ Show msg
     ⇒ (T.Text → IO ())
-    → Int
+    → Natural
         -- ^ minimal delay before returning in microseconds
     → LoggerBackend msg
 testBackend _logLog delayMicro (Right LogMessage{..}) =
     -- simulate deliver by applying the delay
-    threadDelay delayMicro ≫ return ()
+    threadDelay (fromIntegral delayMicro) ≫ return ()
 
 testBackend logLog delayMicro (Left LogMessage{..}) = do
     -- assume that the message comes from the logging system itself.
     -- simulate delivery by applying the delay.
     logLog $ "[" ⊕ logLevelText _logMsgLevel ⊕ "] " ⊕ sshow _logMsg
-    threadDelay delayMicro
+    threadDelay (fromIntegral delayMicro)
 
 -- -------------------------------------------------------------------------- --
 -- No Backend Logger
@@ -239,7 +241,7 @@ noBackendLoggerTest logLog TestParams{..} =
             logLog $ "unexpected exception in client: " ⊕ sshow e
   where
     testClients logFun = do
-        s ← replicateM threadsN .
+        s ← replicateM (fromIntegral threadsN) .
             async ∘ void $ testThread messageN messageSize frontendDelay logFun
         mapM_ wait s
     config = defaultLoggerConfig
@@ -252,7 +254,7 @@ noBackendLoggerTest logLog TestParams{..} =
 nobackendLogger
     ∷ (T.Text → IO ())
     → LoggerConfig
-    → Int
+    → Natural
         -- ^ write delay in microseconds
     → (LogFunctionIO T.Text → IO ())
     → IO ()
@@ -270,7 +272,7 @@ instance Exception BuggyBackendException
 buggyBackendLoggerTest
     ∷ Exception e
     ⇒ e
-    → (Int → Bool)
+    → (Natural → Bool)
         -- ^ exception predicate
     → (T.Text → IO ())
     → TestParams
@@ -281,7 +283,7 @@ buggyBackendLoggerTest exception isException logLog TestParams{..} =
             logLog $ "unexpected exception in client: " ⊕ sshow e
   where
     testClients logFun = do
-        s ← replicateM threadsN .
+        s ← replicateM (fromIntegral threadsN) .
             async ∘ void $ testThread messageN messageSize frontendDelay logFun
         mapM_ wait s
     config = defaultLoggerConfig
@@ -296,11 +298,11 @@ buggyBackendLoggerTest exception isException logLog TestParams{..} =
 buggyBackendLogger
     ∷ Exception e
     ⇒ e
-    → (Int → Bool)
+    → (Natural → Bool)
         -- ^ exception predicate
     → (T.Text → IO ())
     → LoggerConfig
-    → Int
+    → Natural
         -- ^ write delay in microseconds
     → (LogFunctionIO T.Text → IO ())
     → IO ()
@@ -308,7 +310,7 @@ buggyBackendLogger exception isException logLog config delayMicro f =
     withBackend $ \backend → withLogFunction_ logLog config backend f
   where
     withBackend inner = do
-        counter ← newIORef (0 ∷ Int)
+        counter ← newIORef 0
         result ← inner $ \msg → case msg of
             -- test log message
             Right{} → do
