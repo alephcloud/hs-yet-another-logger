@@ -104,6 +104,7 @@ import GHC.Generics
 
 import Prelude.Unicode
 
+import System.Clock
 import System.IO (stderr)
 import System.Timeout
 
@@ -405,19 +406,25 @@ backendWorker errLogFun errLimit errWait backend queue missed = mask_ $
     -- only exceptions beside asynchronous exceptions that can be thrown by
     -- @atomically readMsg@.
     --
-    go errList = atomically readMsg ≫= \case
+    go errList = do
+        -- That's not ideal since we generally don't know how long we have to wait.
+        -- But here it's OK, since the time is used in case there are discarded
+        -- messages. We don't expect to wait long in that case.
+        t ← getTime Realtime
+        atomically (readMsg t) ≫= \case
 
-        -- When the queue is closed and empty the backendWorker returns.
-        -- This is the only way for backendWorker to exit without an exception.
-        Nothing → return ()
+            -- When the queue is closed and empty the backendWorker returns.
+            -- This is the only way for backendWorker to exit without an exception.
+            Nothing → return ()
 
-        -- call backend for the message and loop
-        Just msg → runBackend errList msg ≫= go
+            -- call backend for the message and loop
+            Just msg → runBackend errList msg ≫= go
 
     runBackend errList msg = (backend msg ≫ return []) `catchAny` \e → do
 
         -- try to log exception to backend
-        let errMsg = backendErrorMsg (sshow e)
+        t ← getTime Realtime
+        let errMsg = backendErrorMsg t (sshow e)
         backend (Left errMsg) `catchAny` \_ →
             -- log exception to alternate sink
             errLogFun (errLogMsg errMsg) `catchAny` \_ →
@@ -439,26 +446,28 @@ backendWorker errLogFun errLimit errWait backend queue missed = mask_ $
     -- As long as the queue is not closed and empty this retries until
     -- a new message arrives
     --
-    readMsg = do
+    readMsg t = do
         n ← swapTVar missed 0
         if n > 0
           then do
-            return ∘ Just ∘ Left $ discardMsg n
+            return ∘ Just ∘ Left $ discardMsg t n
           else
             fmap Right <$> readTBMQueue queue
 
     -- A log message that informs about discarded log messages
-    discardMsg n = LogMessage
+    discardMsg t n = LogMessage
         { _logMsg = "discarded " ⊕ sshow n ⊕ " log messages"
         , _logMsgLevel = Warn
         , _logMsgScope = [("system", "logger")]
+        , _logMsgTime = t
         }
 
     -- A log message that informs about an error in the backend
-    backendErrorMsg e = LogMessage
+    backendErrorMsg t e = LogMessage
         { _logMsg = e
         , _logMsgLevel = Error
         , _logMsgScope = [("system", "logger"), ("component", "backend")]
+        , _logMsgTime = t
         }
 
     -- format a log message that is written to the error sink
@@ -576,12 +585,15 @@ loggCtx Logger{..} level msg = do
     case _loggerThreshold of
         Quiet → return ()
         threshold
-            | level ≤ threshold → liftIO ∘ atomically $
-                writeWithLogPolicy $!! LogMessage
-                    { _logMsg = msg
-                    , _logMsgLevel = level
-                    , _logMsgScope = _loggerScope
-                    }
+            | level ≤ threshold → liftIO $ do
+                t ← getTime Realtime
+                atomically $
+                    writeWithLogPolicy $!! LogMessage
+                        { _logMsg = msg
+                        , _logMsgLevel = level
+                        , _logMsgScope = _loggerScope
+                        , _logMsgTime = t
+                        }
             | otherwise → return ()
   where
     writeWithLogPolicy lmsg

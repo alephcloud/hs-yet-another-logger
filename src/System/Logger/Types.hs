@@ -69,6 +69,7 @@ module System.Logger.Types
 , logMsg
 , logMsgLevel
 , logMsgScope
+, logMsgTime
 , LoggerBackend
 
 -- * Logger Frontend
@@ -117,6 +118,8 @@ import GHC.Generics
 import qualified Options.Applicative as O
 
 import Prelude.Unicode
+
+import System.Clock
 
 -- -------------------------------------------------------------------------- --
 -- Log-Level
@@ -260,6 +263,13 @@ data LogMessage a = LogMessage
         -- ^ efficiency of this depends on whether this is shared
         -- between log messsages. Usually this should be just a pointer to
         -- a shared list.
+    , _logMsgTime ∷ !TimeSpec
+        -- ^ a POSIX timestamp
+        --
+        -- UTC seconds elapsed since UNIX Epoch as returned by @clock_gettime@
+        -- on the respective system. NOTE that POSIX is ambigious with regard
+        -- to treatment of leap seconds, and some implementations may actually
+        -- return TAI.
     }
     deriving (Show, Read, Eq, Ord, Typeable, Generic)
 
@@ -272,6 +282,10 @@ logMsgLevel = lens _logMsgLevel $ \a b → a { _logMsgLevel = b }
 logMsgScope ∷ Lens' (LogMessage a) LogScope
 logMsgScope = lens _logMsgScope $ \a b → a { _logMsgScope = b }
 
+logMsgTime ∷ Lens' (LogMessage a) TimeSpec
+logMsgTime = lens _logMsgTime $ \a b → a { _logMsgTime = b }
+
+instance NFData TimeSpec
 instance NFData a ⇒ NFData (LogMessage a)
 
 -- | This is given to logger when it is created. It formats and delivers
