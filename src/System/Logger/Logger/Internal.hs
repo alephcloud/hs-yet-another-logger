@@ -84,7 +84,6 @@ import Control.Concurrent (threadDelay)
 import Control.Concurrent.Async
 -- FIXME: use a better data structure with non-amortized complexity bounds
 import Control.Monad.STM
-import Control.Concurrent.STM.TBMQueue
 import Control.Concurrent.STM.TVar
 import Control.DeepSeq
 import Control.Exception.Lifted
@@ -113,6 +112,7 @@ import System.Timeout
 -- internal modules
 
 import System.Logger.Internal
+import System.Logger.Internal.Queue
 import System.Logger.Types
 
 -- -------------------------------------------------------------------------- --
