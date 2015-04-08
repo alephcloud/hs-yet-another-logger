@@ -472,10 +472,12 @@ backendWorker errLogFun errLimit errWait backend queue missed = mask_ $
 
     -- format a log message that is written to the error sink
     errLogMsg LogMessage{..} = T.unwords
-        [ "[" ⊕ logLevelText _logMsgLevel ⊕ "]"
+        [ formatIso8601Milli _logMsgTime
+        , "[" ⊕ logLevelText _logMsgLevel ⊕ "]"
         , formatScope _logMsgScope
         , _logMsg
         ]
+
     formatScope scope = "[" ⊕ T.intercalate "," (map formatLabel scope) ⊕ "]"
     formatLabel (k,v) = "(" ⊕ k ⊕ "," ⊕ v ⊕ ")"
 
