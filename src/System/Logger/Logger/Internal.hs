@@ -124,7 +124,7 @@ instance ToJSON Natural where
 
 -- Submitted pull request to aeson <https://github.com/bos/aeson/pull/243>
 instance FromJSON Natural where
-    parseJSON = withNumber "Natural" $ \n →
+    parseJSON = withScientific "Natural" $ \n →
         if n < 0
           then fail $ "expected a natural number but got " ⊕ show n
           else pure $ floor n
