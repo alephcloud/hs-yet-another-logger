@@ -51,6 +51,9 @@
 
 *   Replaced usage of `Int` by `Natural` where adequate.
 
+*   Issue #6: use `TBMChan` as internal queue implementation until a new version of
+    stm is released with a [fix for `TQueue`](https://ghc.haskell.org/trac/ghc/ticket/9539).
+
 0.1.1
 =====
 
