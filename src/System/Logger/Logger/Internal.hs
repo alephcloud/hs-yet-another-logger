@@ -269,7 +269,9 @@ pLoggerConfig_ prefix = id
 -- are enqueued and processed asynchronously by a background worker that takes
 -- the message from queue and calls the backend function for each log message.
 --
-type LoggerQueue a = TBMQueue (LogMessage a)
+type LoggerQueue a = TBMChan (LogMessage a)
+-- type LoggerQueue a = TBMQueue (LogMessage a)
+-- type LoggerQueue a = FairTBMQueue (LogMessage a)
 
 data Logger a = Logger
     { _loggerQueue ∷ !(LoggerQueue a)
