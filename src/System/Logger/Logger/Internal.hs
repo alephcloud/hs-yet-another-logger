@@ -376,7 +376,7 @@ createLogger_
     → LoggerBackend a
     → μ (Logger a)
 createLogger_ errLogFun LoggerConfig{..} backend = liftIO $ do
-    queue ← newTBMQueueIO (fromIntegral _loggerConfigQueueSize)
+    queue ← newQueue (fromIntegral _loggerConfigQueueSize)
     missed ← newTVarIO 0
     worker ← backendWorker errLogFun _loggerConfigExceptionLimit _loggerConfigExceptionWait backend queue missed
     -- we link the worker to the calling thread. This way all exception from
@@ -429,7 +429,7 @@ backendWorker errLogFun errLimit errWait backend queue missed = mask_ $
         -- But here it's OK, since the time is used in case there are discarded
         -- messages. We don't expect to wait long in that case.
         t ← getTime Realtime
-        atomically (readMsg t) ≫= \case
+        readMsg t ≫= \case
 
             -- When the queue is closed and empty the backendWorker returns.
             -- This is the only way for backendWorker to exit without an exception.
@@ -465,12 +465,12 @@ backendWorker errLogFun errLimit errWait backend queue missed = mask_ $
     -- a new message arrives
     --
     readMsg t = do
-        n ← swapTVar missed 0
+        n ← atomically $ swapTVar missed 0
         if n > 0
           then do
             return ∘ Just ∘ Left $ discardMsg t n
           else
-            fmap Right <$> readTBMQueue queue
+            fmap Right <$> readQueue queue
 
     -- A log message that informs about discarded log messages
     discardMsg t n = LogMessage
@@ -515,7 +515,7 @@ releaseLogger
     ⇒ Logger a
     → μ ()
 releaseLogger Logger{..} = liftIO $ do
-    atomically $ closeTBMQueue _loggerQueue
+    closeQueue _loggerQueue
     complete ← maybe (fmap Just) (timeout ∘ fromIntegral) _loggerExitTimeout $ wait _loggerWorker
     case complete of
         Nothing → _loggerErrLogFunction "logger: timeout while flushing queue; remaining messages are discarded"
@@ -607,23 +607,26 @@ loggCtx Logger{..} level msg = do
         threshold
             | level ≤ threshold → liftIO $ do
                 t ← getTime Realtime
-                atomically $
-                    writeWithLogPolicy $!! LogMessage
-                        { _logMsg = msg
-                        , _logMsgLevel = level
-                        , _logMsgScope = _loggerScope
-                        , _logMsgTime = t
-                        }
+                writeWithLogPolicy $!! LogMessage
+                    { _logMsg = msg
+                    , _logMsgLevel = level
+                    , _logMsgScope = _loggerScope
+                    , _logMsgTime = t
+                    }
             | otherwise → return ()
   where
     writeWithLogPolicy lmsg
-        | _loggerPolicy ≡ LogPolicyBlock = writeTBMQueue _loggerQueue lmsg
-        | otherwise = tryWriteTBMQueue _loggerQueue lmsg ≫= \case
-            Just False
-                | _loggerPolicy ≡ LogPolicyDiscard → modifyTVar' _loggerMissed succ
-                | _loggerPolicy ≡ LogPolicyRaise → throwSTM $ QueueFullException lmsg
-
-            _ → return ()
+        | _loggerPolicy ≡ LogPolicyBlock = void $ writeQueue _loggerQueue lmsg
+        | otherwise = tryWriteQueue _loggerQueue lmsg ≫= \case
+            -- Success
+            Just True → return ()
+            -- Queue is closed
+            Just False → return ()
+            -- Queue is full
+            Nothing
+                | _loggerPolicy ≡ LogPolicyDiscard → atomically $ modifyTVar' _loggerMissed succ
+                | _loggerPolicy ≡ LogPolicyRaise → throwIO $ QueueFullException lmsg
+                | otherwise → return () -- won't happen, covered above.
 {-# INLINEABLE loggCtx #-}
 
 -- -------------------------------------------------------------------------- --
