@@ -227,7 +227,8 @@ handleBackend
     → LoggerBackend T.Text
 handleBackend h colored eitherMsg = do
     T.hPutStrLn h
-        $ inLevelColor colored ("[" ⊕ sshow level ⊕ "] ")
+        $ formatIso8601Milli (msg ^. logMsgTime) ⊕ " "
+        ⊕ inLevelColor colored ("[" ⊕ sshow level ⊕ "] ")
         ⊕ inScopeColor colored ("[" ⊕ formatedScope ⊕ "] ")
         ⊕ (msg ^. logMsg)
   where
