@@ -102,6 +102,8 @@ import Data.Void
 
 import GHC.Generics
 
+import Numeric.Natural
+
 import Prelude.Unicode
 
 import System.Clock
@@ -114,35 +116,51 @@ import System.Logger.Internal
 import System.Logger.Types
 
 -- -------------------------------------------------------------------------- --
+-- Orphans
+
+-- Submitted pull request to aeson <https://github.com/bos/aeson/pull/243>
+instance ToJSON Natural where
+    toJSON = Number ∘ fromIntegral
+
+-- Submitted pull request to aeson <https://github.com/bos/aeson/pull/243>
+instance FromJSON Natural where
+    parseJSON = withNumber "Natural" $ \n →
+        if n < 0
+          then fail $ "expected a natural number but got " ⊕ show n
+          else pure $ floor n
+          -- this seems a little odd but corresponds to all other aeson
+          -- instances for integral types
+
+-- -------------------------------------------------------------------------- --
 -- Logger Configuration
 
 -- | Logger Configuration
 --
 data LoggerConfig = LoggerConfig
-    { _loggerConfigQueueSize ∷ !Int
+    { _loggerConfigQueueSize ∷ !Natural
     , _loggerConfigThreshold ∷ !LogLevel
         -- ^ initial log threshold, can be changed later on
     , _loggerConfigScope ∷ !LogScope
         -- ^ initial stack of log labels, can be extended later on
     , _loggerConfigPolicy ∷ !LogPolicy
         -- ^ how to deal with a congested logging pipeline
-    , _loggerConfigExceptionLimit ∷ !(Maybe Int)
+    , _loggerConfigExceptionLimit ∷ !(Maybe Natural)
         -- ^ number of consecutive backend exception that can occur before the logger
         -- raises an 'BackendTooManyExceptions' exception. If this is 'Nothing'
         -- the logger will discard all exceptions. For instance a value of @1@
         -- means that an exception is raised when the second exception occurs.
         -- A value of @0@ means that an exception is raised for each exception.
-    , _loggerConfigExceptionWait ∷ !(Maybe Int)
+    , _loggerConfigExceptionWait ∷ !(Maybe Natural)
         -- ^ number of microseconds to wait after an exception from the backend.
         -- If this is 'Nothing' the logger won't wait at all after an exception.
-    , _loggerConfigExitTimeout ∷ !(Maybe Int)
+    , _loggerConfigExitTimeout ∷ !(Maybe Natural)
         -- ^ timeout in microseconds for the logger to flush the queue and
         -- deliver all remaining log messages on termination. If this is 'Nothing'
         -- termination of the logger blogs until all mesages are delivered.
     }
     deriving (Show, Read, Eq, Ord, Typeable, Generic)
 
-loggerConfigQueueSize ∷ Lens' LoggerConfig Int
+loggerConfigQueueSize ∷ Lens' LoggerConfig Natural
 loggerConfigQueueSize = lens _loggerConfigQueueSize $ \a b → a { _loggerConfigQueueSize = b }
 
 loggerConfigThreshold ∷ Lens' LoggerConfig LogLevel
@@ -154,13 +172,13 @@ loggerConfigScope = lens _loggerConfigScope $ \a b → a { _loggerConfigScope = 
 loggerConfigPolicy ∷ Lens' LoggerConfig LogPolicy
 loggerConfigPolicy = lens _loggerConfigPolicy $ \a b → a { _loggerConfigPolicy = b }
 
-loggerConfigExceptionLimit ∷ Lens' LoggerConfig (Maybe Int)
+loggerConfigExceptionLimit ∷ Lens' LoggerConfig (Maybe Natural)
 loggerConfigExceptionLimit = lens _loggerConfigExceptionLimit $ \a b → a { _loggerConfigExceptionLimit = b }
 
-loggerConfigExceptionWait ∷ Lens' LoggerConfig (Maybe Int)
+loggerConfigExceptionWait ∷ Lens' LoggerConfig (Maybe Natural)
 loggerConfigExceptionWait = lens _loggerConfigExceptionWait $ \a b → a { _loggerConfigExceptionWait = b }
 
-loggerConfigExitTimeout ∷ Lens' LoggerConfig (Maybe Int)
+loggerConfigExitTimeout ∷ Lens' LoggerConfig (Maybe Natural)
 loggerConfigExitTimeout = lens _loggerConfigExitTimeout $ \a b → a { _loggerConfigExitTimeout = b }
 
 instance NFData LoggerConfig
@@ -259,8 +277,8 @@ data Logger a = Logger
     , _loggerThreshold ∷ !LogLevel
     , _loggerScope ∷ !LogScope
     , _loggerPolicy ∷ !LogPolicy
-    , _loggerMissed ∷ !(TVar Int)
-    , _loggerExitTimeout ∷ !(Maybe Int)
+    , _loggerMissed ∷ !(TVar Natural)
+    , _loggerExitTimeout ∷ !(Maybe Natural)
     , _loggerErrLogFunction ∷ !(T.Text → IO ())
     }
     deriving (Typeable, Generic)
@@ -285,11 +303,11 @@ loggerPolicy ∷ Lens' (Logger a) LogPolicy
 loggerPolicy = lens _loggerPolicy $ \a b → a { _loggerPolicy = b }
 {-# INLINE loggerPolicy #-}
 
-loggerMissed ∷ Lens' (Logger a) (TVar Int)
+loggerMissed ∷ Lens' (Logger a) (TVar Natural)
 loggerMissed = lens _loggerMissed $ \a b → a { _loggerMissed = b }
 {-# INLINE loggerMissed #-}
 
-loggerExitTimeout ∷ Lens' (Logger a) (Maybe Int)
+loggerExitTimeout ∷ Lens' (Logger a) (Maybe Natural)
 loggerExitTimeout = lens _loggerExitTimeout $ \a b → a { _loggerExitTimeout = b }
 {-# INLINE loggerExitTimeout #-}
 
@@ -358,7 +376,7 @@ createLogger_
     → LoggerBackend a
     → μ (Logger a)
 createLogger_ errLogFun LoggerConfig{..} backend = liftIO $ do
-    queue ← newTBMQueueIO _loggerConfigQueueSize
+    queue ← newTBMQueueIO (fromIntegral _loggerConfigQueueSize)
     missed ← newTVarIO 0
     worker ← backendWorker errLogFun _loggerConfigExceptionLimit _loggerConfigExceptionWait backend queue missed
     -- we link the worker to the calling thread. This way all exception from
@@ -385,18 +403,18 @@ createLogger_ errLogFun LoggerConfig{..} backend = liftIO $ do
 backendWorker
     ∷ (T.Text → IO ())
         -- ^ alternate sink for logging exceptions in the logger itself.
-    → Maybe Int
+    → Maybe Natural
         -- ^ number of consecutive backend exception that can occur before the logger
         -- to raises an 'BackendTooManyExceptions' exception. If this is 'Nothing'
         -- the logger will discard all exceptions. For instance a value of @1@
         -- means that an exception is raised when the second exception occurs.
         -- A value of @0@ means that an exception is raised for each exception.
-    → Maybe Int
+    → Maybe Natural
         -- ^ number of microseconds to wait after an exception from the backend.
         -- If this is 'Nothing' the logger won't wait at all after an exception.
     → LoggerBackend a
     → LoggerQueue a
-    → TVar Int
+    → TVar Natural
     → IO (Async ())
 backendWorker errLogFun errLimit errWait backend queue missed = mask_ $
     asyncWithUnmask $ \umask → umask (go []) `catch` \(_ ∷ LoggerKilled) → return ()
@@ -435,12 +453,12 @@ backendWorker errLogFun errLimit errWait backend queue missed = mask_ $
         case fromException e of
             Just (BackendTerminatedException _ ∷ LoggerException Void) → throwIO e
             _ → do
-                maybe (return ()) threadDelay errWait
+                maybe (return ()) (threadDelay ∘ fromIntegral) errWait
                 let errList' = e:errList
                 case errLimit of
                     Nothing → return []
                     Just n
-                        | length errList' > n → throwIO $ BackendTooManyExceptions (reverse errList')
+                        | fromIntegral (length errList') > n → throwIO $ BackendTooManyExceptions (reverse errList')
                         | otherwise → return errList'
 
     -- As long as the queue is not closed and empty this retries until
@@ -498,7 +516,7 @@ releaseLogger
     → μ ()
 releaseLogger Logger{..} = liftIO $ do
     atomically $ closeTBMQueue _loggerQueue
-    complete ← maybe (fmap Just) timeout _loggerExitTimeout $ wait _loggerWorker
+    complete ← maybe (fmap Just) (timeout ∘ fromIntegral) _loggerExitTimeout $ wait _loggerWorker
     case complete of
         Nothing → _loggerErrLogFunction "logger: timeout while flushing queue; remaining messages are discarded"
         Just _ → return ()

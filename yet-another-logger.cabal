@@ -148,6 +148,10 @@ test-suite tests
         void >= 0.7,
         yet-another-logger
 
+    if !impl(ghc>=7.9)
+        build-depends:
+            nats >= 1
+
     ghc-options: -Wall -threaded -with-rtsopts=-N
 
 Executable example
