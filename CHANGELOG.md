@@ -49,6 +49,8 @@
 
 *   Issue #22: added timestamp to log messages.
 
+*   Replaced usage of `Int` by `Natural` where adequate.
+
 0.1.1
 =====
 
