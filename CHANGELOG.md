@@ -47,6 +47,8 @@
 *   Issue #14: the command line option for setting the log-level got fixed to be
     spelled `--log-level` (instead of `--loglevel`).
 
+*   Issue #22: added timestamp to log messages.
+
 0.1.1
 =====
 
