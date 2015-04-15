@@ -482,11 +482,6 @@ class LoggerCtx ctx msg | ctx → msg where
 newtype LoggerCtxT ctx m α = LoggerCtxT { unLoggerCtxT ∷ ReaderT ctx m α }
     deriving (Functor, Applicative, Monad, MonadIO, MonadTrans, MonadReader ctx, MonadError a, MonadState a, MonadWriter a, MonadBase a, MonadTrace t)
 
--- This should eventually be defined in Control.Monad.Trace.Class
-instance (Monad m, MonadTrace t m) ⇒ MonadTrace t (ReaderT ctx m) where
-    traceScope s inner = liftWith (\run → traceScope s (run inner)) ≫= restoreT ∘ return
-    readTrace = lift readTrace
-
 instance MonadTransControl (LoggerCtxT ctx) where
     type StT (LoggerCtxT ctx) a = StT (ReaderT ctx) a
     liftWith = defaultLiftWith LoggerCtxT unLoggerCtxT
