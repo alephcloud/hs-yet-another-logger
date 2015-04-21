@@ -1,5 +1,6 @@
 env:
     - CABALVER=1.22 GHCVER=7.8.3
+    - CABALVER=1.22 GHCVER=7.10.1
 
 before_install:
     - travis_retry sudo add-apt-repository -y ppa:hvr/ghc
@@ -19,4 +20,6 @@ script:
     - travis_wait cabal test --show-details=streaming
     - cabal check
     - cabal sdist
+    - SRC_TGZ=$(cabal info . | awk '{print $2;exit}').tar.gz &&
+      (cd dist && cabal install --force-reinstalls "$SRC_TGZ")
 
