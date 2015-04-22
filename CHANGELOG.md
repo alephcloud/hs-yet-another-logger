@@ -1,3 +1,9 @@
+0.2.2
+=====
+
+*   [Issue #28] generalized type of lens `logMsg` to support changing
+    the message type.
+
 0.2.1
 =====
 
