@@ -89,7 +89,7 @@ module System.Logger.Types
 
 ) where
 
-import Configuration.Utils hiding (Lens', Error)
+import Configuration.Utils hiding (Lens, Lens', Error)
 
 import Control.DeepSeq
 import Control.Exception
@@ -273,7 +273,7 @@ data LogMessage a = LogMessage
     }
     deriving (Show, Read, Eq, Ord, Typeable, Generic)
 
-logMsg ∷ Lens' (LogMessage a) a
+logMsg ∷ Lens (LogMessage a) (LogMessage b) a b
 logMsg = lens _logMsg $ \a b → a { _logMsg = b }
 
 logMsgLevel ∷ Lens' (LogMessage a) LogLevel
