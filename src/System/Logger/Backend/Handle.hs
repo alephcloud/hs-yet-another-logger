@@ -56,7 +56,9 @@ module System.Logger.Backend.Handle
 
 -- * Backend Implementation
 , withHandleBackend
+, withHandleBackend_
 , handleBackend
+, handleBackend_
 ) where
 
 import Configuration.Utils hiding (Lens', Error)
@@ -210,7 +212,17 @@ withHandleBackend
     ⇒ HandleBackendConfig
     → (LoggerBackend T.Text → m α)
     → m α
-withHandleBackend conf inner =
+withHandleBackend = withHandleBackend_ id
+{-# INLINE withHandleBackend #-}
+
+withHandleBackend_
+    ∷ (MonadIO m, MonadBaseControl IO m)
+    ⇒ (msg -> T.Text)
+        -- ^ formatting function for the log message
+    → HandleBackendConfig
+    → (LoggerBackend msg → m α)
+    → m α
+withHandleBackend_ format conf inner =
     case conf ^. handleBackendConfigHandle of
         StdErr → run stderr
         StdOut → run stdout
@@ -218,21 +230,31 @@ withHandleBackend conf inner =
   where
     run h = do
         colored ← liftIO $ useColor (conf ^. handleBackendConfigColor) h
-        inner $ handleBackend h colored
+        inner $ handleBackend_ format h colored
 
 handleBackend
     ∷ Handle
     → Bool
         -- ^ whether to use ANSI color escape codes
     → LoggerBackend T.Text
-handleBackend h colored eitherMsg = do
+handleBackend = handleBackend_ id
+{-# INLINE handleBackend #-}
+
+handleBackend_
+    ∷ (msg -> T.Text)
+        -- ^ formatting function for the log message
+    → Handle
+    → Bool
+        -- ^ whether to use ANSI color escape codes
+    → LoggerBackend msg
+handleBackend_ format h colored eitherMsg = do
     T.hPutStrLn h
         $ formatIso8601Milli (msg ^. logMsgTime) ⊕ " "
         ⊕ inLevelColor colored ("[" ⊕ sshow level ⊕ "] ")
         ⊕ inScopeColor colored ("[" ⊕ formatedScope ⊕ "] ")
         ⊕ (msg ^. logMsg)
   where
-    msg = either id id eitherMsg
+    msg = either id (logMsg %~ format) eitherMsg
     level = msg ^. logMsgLevel
 
     formatedScope = T.intercalate "|" ∘ L.map formatLabel ∘ reverse $ msg ^. logMsgScope
@@ -262,5 +284,5 @@ handleBackend h colored eitherMsg = do
 
     inBlue ∷ T.Text → T.Text
     inBlue = inColor A.Dull A.Blue
-{-# INLINEABLE handleBackend #-}
+{-# INLINEABLE handleBackend_ #-}
 
