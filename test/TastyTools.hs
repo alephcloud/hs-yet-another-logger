@@ -14,6 +14,7 @@
 -- Stability: experimental
 --
 
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE RankNTypes #-}
@@ -31,9 +32,15 @@ module TastyTools
 , testCaseSteps
 ) where
 
+#ifndef MIN_VERSION_base
+#define MIN_VESION_base(x,y,z) 1
+#endif
+
 import Configuration.Utils (boolReader)
 
+#if ! MIN_VERSION_base(4,8,0)
 import Control.Applicative
+#endif
 import Control.Exception (try)
 import Control.Monad
 import Control.Monad.IO.Class
@@ -67,7 +74,7 @@ instance IsOption OptionVerbose where
 -- | Function to report progress
 --
 type ProgressFunction
-    = MonadIO m
+    = ∀ m . MonadIO m
     ⇒ Float
         -- ^ progress measure
     → T.Text
@@ -121,7 +128,7 @@ testCaseProgress testName = singleTest (T.unpack testName) ∘ TestCaseProgress
 -- | Function to report progress
 --
 type StepFunction
-    = MonadIO m
+    = ∀ m . MonadIO m
     ⇒ T.Text
         -- ^ progress message
     → m ()
