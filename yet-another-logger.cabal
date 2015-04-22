@@ -1,5 +1,5 @@
 Name: yet-another-logger
-Version: 0.2.1
+Version: 0.2.2
 Synopsis: Yet Another Logger
 Description:
     A logging framework written with flexibility and performance
@@ -73,7 +73,7 @@ source-repository this
     type: git
     location: https://github.com/alephcloud/hs-yet-another-logger
     branch: master
-    tag: 0.2.1
+    tag: 0.2.2
 
 Library
     default-language: Haskell2010
