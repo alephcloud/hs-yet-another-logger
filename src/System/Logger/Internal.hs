@@ -83,7 +83,7 @@ formatIso8601
 formatIso8601 precision
     = fromString
     ∘ (⊕ "Z")
-    ∘ take (fromIntegral $ 21 + precision)
+    ∘ take (fromIntegral $ 20 + precision)
     ∘ (⊕ replicate (fromIntegral precision) '0')
     ∘ formatTime defaultTimeLocale ("%Y-%m-%dT%H:%M:%S%Q")
     ∘ timeSpecToUtc
