@@ -25,9 +25,9 @@ install:
     - travis_retry cabal install --only-dependencies --enable-tests
 
 script:
-    - cabal configure --enable-tests
+    - cabal configure --enable-tests --disable-optimization --disable-profiling
     - cabal build
-    - travis_wait cabal test --show-details=streaming
+    - travis_wait cabal test --show-details=streaming -v
     - cabal check
     - cabal sdist
     - SRC_TGZ=$(cabal info . | awk '{print $2;exit}').tar.gz &&
