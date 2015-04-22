@@ -51,15 +51,17 @@ module System.Logger.Backend.ColorOption
 import Configuration.Utils
 
 import Control.DeepSeq
+import Control.Lens
 import Control.Monad.Except
 
-import qualified Data.CaseInsensitive as CI
+import Data.Char (toLower)
 #if ! MIN_VERSION_base(4,8,0)
 import Data.Monoid
 #endif
 import Data.Monoid.Unicode
 import Data.String
 import qualified Data.Text as T
+import Data.Text.Lens
 import Data.Typeable
 
 import GHC.Generics
@@ -85,10 +87,10 @@ data ColorOption
 instance NFData ColorOption
 
 readColorOption
-    ∷ (Monad m, Eq a, Show a, CI.FoldCase a, IsString a, IsString e, Monoid e, MonadError e m)
+    ∷ (Monad m, Eq a, Show a, IsText a, IsString a, IsString e, Monoid e, MonadError e m)
     ⇒ a
     → m ColorOption
-readColorOption x = case CI.mk x of
+readColorOption x = case runIdentity (text (pure . toLower) x) of
     "auto" → return ColorAuto
     "false" → return ColorFalse
     "true" → return ColorTrue
