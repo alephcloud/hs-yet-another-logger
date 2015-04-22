@@ -1,8 +1,14 @@
 0.2.2
 =====
 
-*   [Issue #28] generalized type of lens `logMsg` to support changing
+*   [Issue #28] Generalized type of lens `logMsg` to support changing
     the message type.
+
+*   [Issue #29] Fixed precision of `formatIso8601` function.
+
+*   [Issue #30] Added a version of `withHandleBackend` that is generic
+    in the log message type and accept a formatting function for
+    formatting the log message as text.
 
 0.2.1
 =====
