@@ -116,6 +116,11 @@ instance FromJSON ColorOption where
 pColorOption ∷ O.Parser ColorOption
 pColorOption = pColorOption_ ""
 
+-- | A version of 'pColorOption' that takes a prefix for the
+-- command line option.
+--
+-- @since 0.2
+--
 pColorOption_
     ∷ T.Text
         -- ^ prefix for the command line options.

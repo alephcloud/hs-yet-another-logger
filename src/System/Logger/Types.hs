@@ -167,6 +167,11 @@ instance FromJSON LogLevel where
 pLogLevel ∷ O.Parser LogLevel
 pLogLevel = pLogLevel_ ""
 
+-- | A version of 'pLogLevel' that takes a prefix for the command line
+-- option.
+--
+-- @since 0.2
+--
 pLogLevel_
     ∷ T.Text
         -- ^ prefix for the command line options.
@@ -218,6 +223,11 @@ instance FromJSON LogPolicy where
 pLogPolicy ∷ O.Parser LogPolicy
 pLogPolicy = pLogPolicy_ ""
 
+-- | A version of 'pLogPolicy' that takes a prefix for the
+-- command line option.
+--
+-- @since 0.2
+--
 pLogPolicy_
     ∷ T.Text
         -- ^ prefix for the command line options.
@@ -236,6 +246,19 @@ type LogScope = [LogLabel]
 -- -------------------------------------------------------------------------- --
 -- Logger Exception
 
+-- | Exceptions that are thrown by the logger
+--
+-- ['QueueFullException'] thrown when the queue is full and the logger policy
+--     is set to throw exceptions on a full queue
+--
+-- ['BackendTerminatedException'] a backend can throw this exception to force
+--     the logger immediately
+--
+-- ['BackendTooManyExceptions'] thrown when the backend has thrown unexpected
+--     exceptions more than 'loggerConfigExceptionLimit' times
+--
+-- @since 0.2
+--
 data LoggerException a where
     QueueFullException ∷ LogMessage a → LoggerException a
     BackendTerminatedException ∷ SomeException → LoggerException Void
@@ -270,6 +293,8 @@ data LogMessage a = LogMessage
         -- on the respective system. NOTE that POSIX is ambigious with regard
         -- to treatment of leap seconds, and some implementations may actually
         -- return TAI.
+        --
+        -- @since 0.2
     }
     deriving (Show, Read, Eq, Ord, Typeable, Generic)
 
@@ -282,6 +307,8 @@ logMsgLevel = lens _logMsgLevel $ \a b → a { _logMsgLevel = b }
 logMsgScope ∷ Lens' (LogMessage a) LogScope
 logMsgScope = lens _logMsgScope $ \a b → a { _logMsgScope = b }
 
+-- | @since 0.2
+--
 logMsgTime ∷ Lens' (LogMessage a) TimeSpec
 logMsgTime = lens _logMsgTime $ \a b → a { _logMsgTime = b }
 
@@ -328,17 +355,45 @@ type LogFunction a m = LogLevel → a → m ()
 -- MonadLog
 
 class Monad m ⇒ MonadLog a m | m → a where
+
+    -- | Log a message.
+    --
     logg ∷ LogFunction a m
+
+    -- | Run the inner computation with the given 'LogLevel'
     withLevel ∷ LogLevel → m α → m α
+
+    -- | Run the inner computation with the given 'LogPolicy'.
     withPolicy ∷ LogPolicy → m α → m α
+
+    -- | Run the inner computation with a modified 'LogScope'.
+    --
+    -- @since 0.1
+    --
     localScope ∷ (LogScope → LogScope) → m α → m α
 
+-- | Append a 'LogLabel' to the current 'LogScope' when executing the
+-- inner computation. The 'LogScope' of the outer computation is unchanged.
+--
+-- @since 0.1
+--
 withLabel ∷ MonadLog a m ⇒ LogLabel → m α → m α
 withLabel = localScope ∘ (:)
 
+-- | Remove the last 'LogLabel' from the current 'LogScope' when
+-- executing the inner computation. The 'LogScope' of the outer
+-- computation is unchanged.
+--
+-- @since 0.1
+--
 popLabel ∷ MonadLog a m ⇒ m α → m α
 popLabel = localScope $ \case { [] → []; (_:t) → t }
 
+-- | Executing the inner computation with an empty 'LogScope'. The
+-- 'LogScope' of the outer computation is unchanged.
+--
+-- @since 0.1
+--
 clearScope ∷ MonadLog a m ⇒ m α → m α
 clearScope = localScope $ const []
 

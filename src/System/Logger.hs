@@ -162,6 +162,11 @@ instance FromJSON (LogConfig → LogConfig) where
 pLogConfig ∷ MParser LogConfig
 pLogConfig = pLogConfig_ ""
 
+-- | A version of 'pLogConfig' that takes a prefix for the command
+-- line option.
+--
+-- @since 0.2
+--
 pLogConfig_
     ∷ T.Text
         -- ^ prefix for this and all subordinate command line options.

@@ -56,6 +56,8 @@ sshow = fromString ∘ show
 -- | Format 'TimeSpec' as ISO8601 date-time string with
 -- microseconds precision.
 --
+-- @since 0.2
+--
 formatIso8601Micro
     ∷ IsString a
     ⇒ TimeSpec
@@ -65,6 +67,8 @@ formatIso8601Micro = formatIso8601 6
 -- | Format 'TimeSpec' as ISO8601 date-time string with
 -- milliseconds precision.
 --
+-- @since 0.2
+--
 formatIso8601Milli
     ∷ IsString a
     ⇒ TimeSpec
@@ -73,6 +77,8 @@ formatIso8601Milli = formatIso8601 3
 
 -- | Format 'TimeSpec' as ISO8601 date-time string with
 -- the given sub-second precision.
+--
+-- @since 0.2
 --
 formatIso8601
     ∷ IsString a
@@ -89,6 +95,8 @@ formatIso8601 precision
     ∘ timeSpecToUtc
 
 -- | Convert a 'TimeSpec' value into 'UTCTime'
+--
+-- @since 0.2
 --
 timeSpecToUtc
     ∷ TimeSpec

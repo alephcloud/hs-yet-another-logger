@@ -150,13 +150,21 @@ data LoggerConfig = LoggerConfig
         -- the logger will discard all exceptions. For instance a value of @1@
         -- means that an exception is raised when the second exception occurs.
         -- A value of @0@ means that an exception is raised for each exception.
+        --
+        -- @since 0.2
+
     , _loggerConfigExceptionWait ∷ !(Maybe Natural)
         -- ^ number of microseconds to wait after an exception from the backend.
         -- If this is 'Nothing' the logger won't wait at all after an exception.
+        --
+        -- @since 0.2
+
     , _loggerConfigExitTimeout ∷ !(Maybe Natural)
         -- ^ timeout in microseconds for the logger to flush the queue and
         -- deliver all remaining log messages on termination. If this is 'Nothing'
         -- termination of the logger blogs until all mesages are delivered.
+        --
+        -- @since 0.2
     }
     deriving (Show, Read, Eq, Ord, Typeable, Generic)
 
@@ -229,6 +237,11 @@ instance FromJSON (LoggerConfig → LoggerConfig) where
 pLoggerConfig ∷ MParser LoggerConfig
 pLoggerConfig = pLoggerConfig_ ""
 
+-- | A version of 'pLoggerConfig' that takes a prefix for the
+-- command line option.
+--
+-- @since 0.2
+--
 pLoggerConfig_
     ∷ T.Text
         -- ^ prefix for this and all subordinate command line options.
@@ -369,6 +382,8 @@ createLogger = createLogger_ (T.hPutStrLn stderr)
 
 -- | A version of 'createLogger' that takes as an extra argument
 -- a function for logging errors in the logging system.
+--
+-- @since 0.2
 --
 createLogger_
     ∷ MonadIO μ
@@ -555,6 +570,8 @@ withLogger = withLogger_ (T.hPutStrLn stderr)
 -- | A version of 'withLogger' that takes as an extra argument
 -- a function for logging errors in the logging system.
 --
+-- @since 0.2
+--
 withLogger_
     ∷ (MonadIO μ, MonadBaseControl IO μ)
     ⇒ (T.Text → IO ())
@@ -579,6 +596,8 @@ withLogFunction = withLogFunction_ (T.hPutStrLn stderr)
 
 -- | For simple cases, when the logger threshold and the logger scope is
 -- constant this function can be used to directly initialize a log function.
+--
+-- @since 0.2
 --
 withLogFunction_
     ∷ (Show a, Typeable a, NFData a, MonadIO μ, MonadBaseControl IO μ)

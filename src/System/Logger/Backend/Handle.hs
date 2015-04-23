@@ -140,6 +140,11 @@ instance FromJSON LoggerHandleConfig where
 pLoggerHandleConfig ∷ O.Parser LoggerHandleConfig
 pLoggerHandleConfig = pLoggerHandleConfig_ ""
 
+-- | A version of 'pLoggerHandleConfig' that takes a prefix for the
+-- command line option.
+--
+-- @since 0.2
+--
 pLoggerHandleConfig_
     ∷ T.Text
         -- ^ prefix for the command line options.
@@ -196,6 +201,11 @@ instance FromJSON (HandleBackendConfig → HandleBackendConfig) where
 pHandleBackendConfig ∷ MParser HandleBackendConfig
 pHandleBackendConfig = pHandleBackendConfig_ ""
 
+-- | A version of 'pLoggerHandleBackendConfig' that takes a prefix for the
+-- command line option.
+--
+-- @since 0.2
+--
 pHandleBackendConfig_
     ∷ T.Text
         -- ^ prefix for this and all subordinate command line options.
@@ -215,9 +225,14 @@ withHandleBackend
 withHandleBackend = withHandleBackend_ id
 {-# INLINE withHandleBackend #-}
 
+-- | A version of 'withHandleBackend' that is generic in the type
+-- of the log message.
+--
+-- @since 0.2.2
+--
 withHandleBackend_
     ∷ (MonadIO m, MonadBaseControl IO m)
-    ⇒ (msg -> T.Text)
+    ⇒ (msg → T.Text)
         -- ^ formatting function for the log message
     → HandleBackendConfig
     → (LoggerBackend msg → m α)
@@ -240,8 +255,13 @@ handleBackend
 handleBackend = handleBackend_ id
 {-# INLINE handleBackend #-}
 
+-- | A version of 'handleBackend' that is generic in the type of
+-- the log message.
+--
+-- @since 0.2.2
+--
 handleBackend_
-    ∷ (msg -> T.Text)
+    ∷ (msg → T.Text)
         -- ^ formatting function for the log message
     → Handle
     → Bool
