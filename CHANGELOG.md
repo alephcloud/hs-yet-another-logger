@@ -1,3 +1,9 @@
+0.2.3
+=====
+
+*   Fix semantically invalid default NFData instance when build with
+    deepseq <1.4.
+
 0.2.2
 =====
 
