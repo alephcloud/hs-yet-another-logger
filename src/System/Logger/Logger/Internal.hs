@@ -79,6 +79,10 @@ module System.Logger.Logger.Internal
 , runLogT
 ) where
 
+#ifndef MIN_VERSION_base
+#define MIN_VESION_base(a,b,c) 1
+#endif
+
 #ifndef MIN_VERSION_deepseq
 #define MIN_VESION_deepseq(a,b,c) 1
 #endif
@@ -194,11 +198,14 @@ loggerConfigExceptionWait = lens _loggerConfigExceptionWait $ \a b → a { _logg
 loggerConfigExitTimeout ∷ Lens' LoggerConfig (Maybe Natural)
 loggerConfigExitTimeout = lens _loggerConfigExitTimeout $ \a b → a { _loggerConfigExitTimeout = b }
 
+#if ! MIN_VERSION_deepseq(1,4,0) || ! MIN_VERSION_base(4,8,0)
+instance NFData Natural where
+    rnf a = a `seq` ()
+#endif
+
 #if MIN_VERSION_deepseq(1,4,0)
 instance NFData LoggerConfig
 #else
-instance NFData Natural where
-    rnf a = a `seq` ()
 instance NFData LoggerConfig where
     rnf (LoggerConfig a0 a1 a2 a3 a4 a5 a6) =
         rnf a0 `seq` rnf a1 `seq` rnf a2 `seq` rnf a3 `seq` rnf a4 `seq` rnf a5 `seq` rnf a6
