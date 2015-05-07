@@ -1,3 +1,9 @@
+0.2.3.1
+=======
+
+*   Add missing NFData instance for `Natural` when build with
+    deepseq>=1.4 and base<4.8.
+
 0.2.3
 =====
 
