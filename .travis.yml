@@ -1,8 +1,9 @@
 sudo: false
 language: c
 env:
-    - CABALVER=1.22 GHCVER=7.8.4
-    - CABALVER=1.22 GHCVER=7.10.1
+    - CABALVER=1.22 GHCVER=7.8.4 DEEPSEQ=""
+    - CABALVER=1.22 GHCVER=7.8.4 DEEPSEQ="--constraint=deepseq>=1.4" FORCE="--force-reinstalls"
+    - CABALVER=1.22 GHCVER=7.10.1 DEEPSEQ=""
 
 addons:
     apt:
@@ -22,14 +23,14 @@ install:
     - cabal --version
     - echo "$(ghc --version) [$(ghc --print-project-git-commit-id 2> /dev/null || echo '?')]"
     - travis_retry cabal update
-    - travis_retry cabal install --only-dependencies --enable-tests
+    - travis_retry cabal install --only-dependencies --enable-tests $DEEPSEQ $FORCE
 
 script:
-    - cabal configure --enable-tests --disable-optimization --disable-profiling
+    - cabal configure --enable-tests --disable-optimization --disable-profiling $DEEPSEQ
     - cabal build
     - travis_wait cabal test --show-details=streaming -v
     - cabal check
     - cabal sdist
     - SRC_TGZ=$(cabal info . | awk '{print $2;exit}').tar.gz &&
-      (cd dist && cabal install --force-reinstalls "$SRC_TGZ")
+      (cd dist && cabal install --force-reinstalls $DEEPSEQ $FORCE "$SRC_TGZ")
 
