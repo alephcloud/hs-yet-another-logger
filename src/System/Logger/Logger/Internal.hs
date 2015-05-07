@@ -31,6 +31,7 @@
 -- module as an example and starting point.
 --
 
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
@@ -77,6 +78,10 @@ module System.Logger.Logger.Internal
 , runLoggerT
 , runLogT
 ) where
+
+#ifndef MIN_VERSION_deepseq
+#define MIN_VESION_deepseq(a,b,c) 1
+#endif
 
 import Configuration.Utils hiding (Lens', Error)
 
@@ -189,7 +194,15 @@ loggerConfigExceptionWait = lens _loggerConfigExceptionWait $ \a b → a { _logg
 loggerConfigExitTimeout ∷ Lens' LoggerConfig (Maybe Natural)
 loggerConfigExitTimeout = lens _loggerConfigExitTimeout $ \a b → a { _loggerConfigExitTimeout = b }
 
+#if MIN_VERSION_deepseq(1,4,0)
 instance NFData LoggerConfig
+#else
+instance NFData Natural where
+    rnf a = a `seq` ()
+instance NFData LoggerConfig where
+    rnf (LoggerConfig a0 a1 a2 a3 a4 a5 a6) =
+        rnf a0 `seq` rnf a1 `seq` rnf a2 `seq` rnf a3 `seq` rnf a4 `seq` rnf a5 `seq` rnf a6
+#endif
 
 -- | Default Logger configuration
 --
