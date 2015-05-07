@@ -25,6 +25,7 @@
 -- Stability: experimental
 --
 
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE LambdaCase #-}
@@ -88,6 +89,10 @@ module System.Logger.Types
 , popLabel
 
 ) where
+
+#ifndef MIN_VERSION_deepseq
+#define MIN_VESION_deepseq(a,b,c) 1
+#endif
 
 import Configuration.Utils hiding (Lens, Lens', Error)
 
@@ -312,8 +317,16 @@ logMsgScope = lens _logMsgScope $ \a b → a { _logMsgScope = b }
 logMsgTime ∷ Lens' (LogMessage a) TimeSpec
 logMsgTime = lens _logMsgTime $ \a b → a { _logMsgTime = b }
 
+#if MIN_VERSION_deepseq(1,4,0)
 instance NFData TimeSpec
 instance NFData a ⇒ NFData (LogMessage a)
+#else
+instance NFData TimeSpec where
+    rnf (TimeSpec a0 a1) = rnf a0 `seq` rnf a1
+instance NFData a ⇒ NFData (LogMessage a) where
+    rnf (LogMessage a0 a1 a2 a3) =
+        rnf a0 `seq` rnf a1 `seq` rnf a2 `seq` rnf a3
+#endif
 
 -- | This is given to logger when it is created. It formats and delivers
 -- individual log messages synchronously. The backend is called once for each

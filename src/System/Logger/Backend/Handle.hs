@@ -25,6 +25,7 @@
 -- Stability: experimental
 --
 
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveDataTypeable #-}
@@ -60,6 +61,10 @@ module System.Logger.Backend.Handle
 , handleBackend
 , handleBackend_
 ) where
+
+#ifndef MIN_VERSION_deepseq
+#define MIN_VESION_deepseq(a,b,c) 1
+#endif
 
 import Configuration.Utils hiding (Lens', Error)
 import Configuration.Utils.Validation
@@ -171,7 +176,12 @@ handleBackendConfigColor = lens _handleBackendConfigColor $ \a b → a { _handle
 handleBackendConfigHandle ∷ Lens' HandleBackendConfig LoggerHandleConfig
 handleBackendConfigHandle = lens _handleBackendConfigHandle $ \a b → a { _handleBackendConfigHandle = b }
 
+#if MIN_VERSION_deepseq(1,4,0)
 instance NFData HandleBackendConfig
+#else
+instance NFData HandleBackendConfig where
+    rnf (HandleBackendConfig a0 a1) = rnf a0 `seq` rnf a1
+#endif
 
 defaultHandleBackendConfig ∷ HandleBackendConfig
 defaultHandleBackendConfig = HandleBackendConfig
