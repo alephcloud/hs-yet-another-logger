@@ -21,8 +21,6 @@ main = withConsoleLogger Info $ do
 Overview
 ========
 
-**This Version is yet a preview**
-
 The logging system consists of four main parts:
 
 1. The logging front-end are those types and functions that are used
