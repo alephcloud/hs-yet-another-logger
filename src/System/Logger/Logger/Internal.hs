@@ -80,11 +80,15 @@ module System.Logger.Logger.Internal
 ) where
 
 #ifndef MIN_VERSION_base
-#define MIN_VESION_base(a,b,c) 1
+#define MIN_VERSION_base(a,b,c) 1
 #endif
 
 #ifndef MIN_VERSION_deepseq
-#define MIN_VESION_deepseq(a,b,c) 1
+#define MIN_VERSION_deepseq(a,b,c) 1
+#endif
+
+#ifndef MIN_VERSION_aeson
+#define MIN_VERSION_aeson(a,b,c) 1
 #endif
 
 import Configuration.Utils hiding (Lens', Error)
@@ -124,14 +128,14 @@ import System.Logger.Internal
 import System.Logger.Internal.Queue
 import System.Logger.Types
 
+#if ! MIN_VERSION_aeson(0,11,1) && ! ( MIN_VERSION_base(4,8,0) && MIN_VERSION_aeson(0,11,0) )
+
 -- -------------------------------------------------------------------------- --
 -- Orphans
 
--- Submitted pull request to aeson <https://github.com/bos/aeson/pull/243>
 instance ToJSON Natural where
     toJSON = Number ∘ fromIntegral
 
--- Submitted pull request to aeson <https://github.com/bos/aeson/pull/243>
 instance FromJSON Natural where
     parseJSON = withScientific "Natural" $ \n →
         if n < 0
@@ -139,6 +143,7 @@ instance FromJSON Natural where
           else pure $ floor n
           -- this seems a little odd but corresponds to all other aeson
           -- instances for integral types
+#endif
 
 -- -------------------------------------------------------------------------- --
 -- Logger Configuration
