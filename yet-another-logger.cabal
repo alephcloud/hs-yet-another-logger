@@ -102,6 +102,7 @@ Library
         deepseq >= 1.3,
         either >= 4.3,
         enclosed-exceptions >= 1.0,
+        exceptions >= 0.8,
         lens >= 4.6,
         lifted-base >= 0.2.3,
         monad-control >= 1.0,

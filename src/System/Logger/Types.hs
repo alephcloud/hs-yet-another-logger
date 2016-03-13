@@ -100,6 +100,7 @@ import Control.DeepSeq
 import Control.Exception
 import Control.Lens hiding ((.=))
 import Control.Monad.Base
+import Control.Monad.Catch (MonadThrow, MonadCatch, MonadMask)
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.Trans.Control
@@ -548,7 +549,7 @@ class LoggerCtx ctx msg | ctx → msg where
     {-# INLINE withLoggerPolicy #-}
 
 newtype LoggerCtxT ctx m α = LoggerCtxT { unLoggerCtxT ∷ ReaderT ctx m α }
-    deriving (Functor, Applicative, Monad, MonadIO, MonadTrans, MonadReader ctx, MonadError a, MonadState a, MonadWriter a, MonadBase a, MonadTrace t)
+    deriving (Functor, Applicative, Monad, MonadIO, MonadTrans, MonadReader ctx, MonadError a, MonadState a, MonadWriter a, MonadBase a, MonadTrace t, MonadThrow, MonadCatch, MonadMask)
 
 instance MonadTransControl (LoggerCtxT ctx) where
     type StT (LoggerCtxT ctx) a = StT (ReaderT ctx) a
