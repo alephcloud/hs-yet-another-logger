@@ -104,7 +104,6 @@ import Control.Monad.Catch (MonadThrow, MonadCatch, MonadMask)
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.Trans.Control
-import Control.Monad.Trans.Either
 import Control.Monad.State
 import Control.Monad.Trace
 import Control.Monad.Trans.Trace
@@ -471,17 +470,6 @@ instance (MonadLog a m) ⇒ MonadLog a (StateT σ m) where
     {-# INLINE localScope #-}
 
 instance (MonadLog a m) ⇒ MonadLog a (TraceT t e m) where
-    logg l = lift ∘ logg l
-    withLevel level inner = liftWith (\run → withLevel level (run inner)) ≫= restoreT ∘ return
-    withPolicy policy inner = liftWith (\run → withPolicy policy (run inner)) ≫= restoreT ∘ return
-    localScope f inner = liftWith (\run → localScope f (run inner)) ≫= restoreT ∘ return
-
-    {-# INLINE logg #-}
-    {-# INLINE withLevel #-}
-    {-# INLINE withPolicy #-}
-    {-# INLINE localScope #-}
-
-instance (MonadLog a m) ⇒ MonadLog a (EitherT σ m) where
     logg l = lift ∘ logg l
     withLevel level inner = liftWith (\run → withLevel level (run inner)) ≫= restoreT ∘ return
     withPolicy policy inner = liftWith (\run → withPolicy policy (run inner)) ≫= restoreT ∘ return
