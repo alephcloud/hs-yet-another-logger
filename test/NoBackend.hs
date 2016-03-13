@@ -103,6 +103,7 @@ tests = testGroup "trivial backend"
         ]
     , buggyNoRecoverBackendTests 10 15
         [ TestParams 1000 10 100 100 100 1 (Just 1000)
+        , TestParams 1000 25 100 100 100 1 (Just 1000)
         -- we give these tests some more time at termination to ensure that
         -- the expected exceptions are actually thrown.
         ]
@@ -177,8 +178,9 @@ buggyNoRecoverBackendTests m n =
             -- the backend has enough time to deliver enough messages to trigger
             -- and exception.
             assertString $ "Missing expected exception: " ⊕ sshow exception
-        `catch` \(e ∷ LoggerException Void) → case e of
-            BackendTooManyExceptions (e0:_) → case fromException e0 of
+        `catch` \e → case fromException e of
+        -- `catchAny` \e → case fromException e of
+            Just (BackendTooManyExceptions (e0:_) ∷ LoggerException Void) → case fromException e0 of
                 Just BuggyBackendException → logLogStr $ "test: expected exception: " ⊕ sshow e
                 _ → throwIO e
             _ → throwIO e
