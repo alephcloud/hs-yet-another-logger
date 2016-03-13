@@ -120,7 +120,8 @@ testCaseProgress
     → (ProgressFunction → Assertion)
         -- ^ test method
     → TestTree
-testCaseProgress testName = singleTest (T.unpack testName) ∘ TestCaseProgress
+testCaseProgress testName test =
+    singleTest (T.unpack testName) $ TestCaseProgress test
 
 -- -------------------------------------------------------------------------- --
 -- Step
@@ -141,6 +142,6 @@ testCaseSteps
     → (StepFunction → Assertion)
         -- ^ test method
     → TestTree
-testCaseSteps testName inner = singleTest (T.unpack testName) ∘ TestCaseProgress $ \f →
-    inner (f 0)
+testCaseSteps testName inner = singleTest (T.unpack testName) $
+    TestCaseProgress $ \f → inner (f 0)
 
