@@ -530,17 +530,22 @@ instance MonadTransControl (LoggerCtxT ctx) where
     type StT (LoggerCtxT ctx) a = StT (ReaderT ctx) a
     liftWith = defaultLiftWith LoggerCtxT unLoggerCtxT
     restoreT = defaultRestoreT LoggerCtxT
+    {-# INLINE liftWith #-}
+    {-# INLINE restoreT #-}
 
 instance MonadBaseControl b m ⇒ MonadBaseControl b (LoggerCtxT ctx m) where
     type StM (LoggerCtxT ctx m) a = ComposeSt (LoggerCtxT ctx) m a
     liftBaseWith = defaultLiftBaseWith
     restoreM = defaultRestoreM
+    {-# INLINE liftBaseWith #-}
+    {-# INLINE restoreM #-}
 
 runLoggerCtxT
     ∷ LoggerCtxT ctx m α
     → ctx
     → m α
 runLoggerCtxT = runReaderT ∘ unLoggerCtxT
+{-# INLINE runLoggerCtxT #-}
 
 instance (Show a, Typeable a, NFData a, MonadIO m, LoggerCtx ctx a) ⇒ MonadLog a (LoggerCtxT ctx m) where
     logg l m = ask ≫= \ctx → liftIO (loggerFunIO ctx l m)
