@@ -105,8 +105,6 @@ import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.Trans.Control
 import Control.Monad.State
-import Control.Monad.Trace
-import Control.Monad.Trans.Trace
 import Control.Monad.Writer
 import Control.Monad.Unicode
 
@@ -469,17 +467,6 @@ instance (MonadLog a m) ⇒ MonadLog a (StateT σ m) where
     {-# INLINE withPolicy #-}
     {-# INLINE localScope #-}
 
-instance (MonadLog a m) ⇒ MonadLog a (TraceT t e m) where
-    logg l = lift ∘ logg l
-    withLevel level inner = liftWith (\run → withLevel level (run inner)) ≫= restoreT ∘ return
-    withPolicy policy inner = liftWith (\run → withPolicy policy (run inner)) ≫= restoreT ∘ return
-    localScope f inner = liftWith (\run → localScope f (run inner)) ≫= restoreT ∘ return
-
-    {-# INLINE logg #-}
-    {-# INLINE withLevel #-}
-    {-# INLINE withPolicy #-}
-    {-# INLINE localScope #-}
-
 {-
 -- Uses @OverlappingInstances@ to lift MonadLog in all transformers with an
 -- instance for 'MonadTransControl'.
@@ -537,7 +524,7 @@ class LoggerCtx ctx msg | ctx → msg where
     {-# INLINE withLoggerPolicy #-}
 
 newtype LoggerCtxT ctx m α = LoggerCtxT { unLoggerCtxT ∷ ReaderT ctx m α }
-    deriving (Functor, Applicative, Monad, MonadIO, MonadTrans, MonadReader ctx, MonadError a, MonadState a, MonadWriter a, MonadBase a, MonadTrace t, MonadThrow, MonadCatch, MonadMask)
+    deriving (Functor, Applicative, Monad, MonadIO, MonadTrans, MonadReader ctx, MonadError a, MonadState a, MonadWriter a, MonadBase a, MonadThrow, MonadCatch, MonadMask)
 
 instance MonadTransControl (LoggerCtxT ctx) where
     type StT (LoggerCtxT ctx) a = StT (ReaderT ctx) a

@@ -111,7 +111,6 @@ Library
         stm-chans >= 3.0,
         text >= 1.2,
         time >= 1.5,
-        trace >= 0.2,
         transformers >= 0.3,
         transformers-base >= 0.4,
         void >= 0.7
