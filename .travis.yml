@@ -28,14 +28,14 @@ install:
     - cabal --version
     - echo "$(ghc --version) [$(ghc --print-project-git-commit-id 2> /dev/null || echo '?')]"
     - travis_retry cabal update
-    - cabal install --only-dependencies --enable-tests $DEEPSEQ $AESON
+    - cabal install --only-dependencies --enable-tests $DEEPSEQ $AESON -j4
 
 script:
     - cabal configure --enable-tests $DEEPSEQ $AESON
-    - cabal build
-    - travis_wait cabal test --show-details=streaming -v
+    - cabal build -j4
+    - travis_wait cabal test --show-details=streaming -j2 --test-option=+RTS --test-option=-N2
     - cabal check
     - cabal sdist
     - SRC_TGZ=$(cabal info . | awk '{print $2;exit}').tar.gz &&
-      (cd dist && cabal install --force-reinstalls $DEEPSEQ $AESON "$SRC_TGZ")
+      (cd dist && cabal install --force-reinstalls $DEEPSEQ $AESON -j4 "$SRC_TGZ")
 
