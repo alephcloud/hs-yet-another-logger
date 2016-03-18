@@ -1,5 +1,5 @@
-0.3
-====
+0.3.0
+=====
 
 *   Remove `EitherT` instance. It's recommended to use `ExceptT` instead.
 
