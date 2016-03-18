@@ -50,9 +50,11 @@ Description:
 
 Homepage: https://github.com/alephcloud/hs-yet-another-logger
 License: Apache-2.0
-Author: Lars Kuhtz <lkuhtz@pivotmail.com>
-Maintainer: Lars Kuhtz <lkuhtz@pivotmail.com>
-Copyright: Copyright (c) 2014-2015 PivotCloud, Inc.
+Author: Lars Kuhtz <lakuhtz@gmail.com>
+Maintainer: Lars Kuhtz <lakuhtz@gmail.com>
+Copyright:
+    Copyright (c) 2016 Lars Kuhtz <lakuhtz@gmail.com>
+    Copyright (c) 2014-2015 PivotCloud, Inc.
 Category: Logging, System
 Build-type: Simple
 Cabal-version: >= 1.18
