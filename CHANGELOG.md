@@ -1,3 +1,18 @@
+0.3
+====
+
+*   Remove `EitherT` instance. It's recommended to use `ExceptT` instead.
+
+*   Remove `TraceT` instace. It's not actively maintained any more.
+
+*   Support aeson >= 0.11, which comes with instances for `Natural`.
+
+*   Support GHC-8.
+
+*   `MonadThrow`, `MonadCatch`, and `MonadMask` instances for `LoggerT`.
+
+*   Support for Cabal-1.18 and time >= 1.4 && < 1.5.
+
 0.2.3.1
 =======
 

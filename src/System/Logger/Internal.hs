@@ -1,29 +1,14 @@
--- Copyright (c) 2014-2015 PivotCloud, Inc.
---
--- System.Logger.Internal
---
--- Please feel free to contact us at licensing@pivotmail.com with any
--- contributions, additions, or other feedback; we would love to hear from
--- you.
---
--- Licensed under the Apache License, Version 2.0 (the "License"); you may
--- not use this file except in compliance with the License. You may obtain a
--- copy of the License at http://www.apache.org/licenses/LICENSE-2.0
---
--- Unless required by applicable law or agreed to in writing, software
--- distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
--- WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
--- License for the specific language governing permissions and limitations
--- under the License.
-
 -- |
 -- Module: System.Logger.Internal
--- Copyright: Copyright (c) 2014-2015 PivotCloud, Inc.
+-- Copyright:
+--     Copyright (c) 2016 Lars Kuhtz <lakuhtz@gmail.com>
+--     Copyright (c) 2014-2015 PivotCloud, Inc.
 -- License: Apache License, Version 2.0
--- Maintainer: Lars Kuhtz <lkuhtz@pivotmail.com>
+-- Maintainer: Lars Kuhtz <lakuhtz@gmail.com>
 -- Stability: experimental
 --
 
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
 module System.Logger.Internal
@@ -33,6 +18,10 @@ module System.Logger.Internal
 , formatIso8601Micro
 , timeSpecToUtc
 ) where
+
+#ifndef MIN_VERSION_time
+#define MIN_VERSION_time(a,b,c) 1
+#endif
 
 import Data.Monoid.Unicode
 import Data.Time.Clock
@@ -45,6 +34,10 @@ import Numeric.Natural
 import Prelude.Unicode
 
 import System.Clock
+
+#if !MIN_VERSION_time(1,5,0)
+import System.Locale (defaultTimeLocale)
+#endif
 
 sshow
     ∷ (Show a, IsString b)
