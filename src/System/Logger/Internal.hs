@@ -24,6 +24,7 @@
 -- Stability: experimental
 --
 
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
 module System.Logger.Internal
@@ -33,6 +34,10 @@ module System.Logger.Internal
 , formatIso8601Micro
 , timeSpecToUtc
 ) where
+
+#ifndef MIN_VERSION_time
+#define MIN_VERSION_time(a,b,c) 1
+#endif
 
 import Data.Monoid.Unicode
 import Data.Time.Clock
@@ -45,6 +50,10 @@ import Numeric.Natural
 import Prelude.Unicode
 
 import System.Clock
+
+#if !MIN_VERSION_time(1,5,0)
+import System.Locale (defaultTimeLocale)
+#endif
 
 sshow
     ∷ (Show a, IsString b)
