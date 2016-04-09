@@ -75,7 +75,7 @@ import Control.Monad.Except
 import Control.Monad.Trans.Control
 import Control.Monad.Writer
 
-import qualified Data.CaseInsensitive as CI
+import Data.Char (toLower)
 import qualified Data.List as L
 import Data.Monoid.Unicode
 import Data.String
@@ -111,17 +111,18 @@ data LoggerHandleConfig
 instance NFData LoggerHandleConfig
 
 readLoggerHandleConfig
-    ∷ (MonadError e m, Eq a, Show a, CI.FoldCase a, IsText a, IsString e, Monoid e)
+    ∷ (MonadError e m, Eq a, Show a, IsText a, IsString e, Monoid e)
     ⇒ a
     → m LoggerHandleConfig
-readLoggerHandleConfig x = case CI.mk tx of
+readLoggerHandleConfig x = case foldedTx of
     "stdout" → return StdOut
     "stderr" → return StdErr
-    _ | CI.mk (L.take 5 tx) ≡ "file:" → return $ FileHandle (L.drop 5 tx)
+    _ | L.take 5 foldedTx ≡ "file:" → return $ FileHandle (L.drop 5 tx)
     e → throwError $ "unexpected logger handle value: "
         ⊕ fromString (show e)
         ⊕ ", expected \"stdout\", \"stderr\", or \"file:<FILENAME>\""
   where
+    foldedTx = runIdentity $ text (pure . toLower) tx
     tx = packed # x
 
 loggerHandleConfigText

@@ -102,7 +102,6 @@ Library
         base == 4.*,
         base-unicode-symbols >= 0.2,
         bytestring >= 0.10,
-        case-insensitive >= 1.2,
         clock >= 0.4,
         configuration-tools >= 0.2.8,
         deepseq >= 1.3,

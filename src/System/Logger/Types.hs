@@ -108,7 +108,7 @@ import Control.Monad.State
 import Control.Monad.Writer
 import Control.Monad.Unicode
 
-import qualified Data.CaseInsensitive as CI
+import Data.Char (toLower)
 import Data.Monoid.Unicode
 import Data.String
 import qualified Data.Text as T
@@ -138,10 +138,10 @@ data LogLevel
 instance NFData LogLevel
 
 readLogLevel
-    ∷ (MonadError e m, Eq a, Show a, CI.FoldCase a, IsString a, IsString e, Monoid e)
+    ∷ (MonadError e m, Eq a, Show a, IsText a, IsString a, IsString e, Monoid e)
     ⇒ a
     → m LogLevel
-readLogLevel x = case CI.mk x of
+readLogLevel x = case runIdentity (text (pure . toLower) x) of
     "quiet" → return Quiet
     "error" → return Error
     "warn" → return Warn
@@ -204,10 +204,10 @@ logPolicyText LogPolicyRaise = "raise"
 logPolicyText LogPolicyBlock = "block"
 
 readLogPolicy
-    ∷ (MonadError e m, Eq a, Show a, CI.FoldCase a, IsText a, IsString e, Monoid e)
+    ∷ (MonadError e m, Eq a, Show a, IsText a, IsString e, Monoid e)
     ⇒ a
     → m LogPolicy
-readLogPolicy x = case CI.mk tx of
+readLogPolicy x = case foldedTx of
     "discard" → return LogPolicyDiscard
     "raise" → return LogPolicyRaise
     "block" → return LogPolicyBlock
@@ -215,6 +215,7 @@ readLogPolicy x = case CI.mk tx of
         $ "invalid log policy value " ⊕ fromString (show e) ⊕ ";"
         ⊕ " the log policy value must be one of \"discard\", \"raise\", or \"block\""
   where
+    foldedTx = runIdentity $ text (pure . toLower) tx
     tx = packed # x
 
 instance ToJSON LogPolicy where
