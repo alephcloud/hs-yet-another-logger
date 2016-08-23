@@ -260,7 +260,7 @@ instance FromJSON (LoggerConfig → LoggerConfig) where
         <*< loggerConfigExitTimeout ..: "exit_timeout" × o
 
 pLoggerConfig ∷ MParser LoggerConfig
-pLoggerConfig = pLoggerConfig_ ""
+pLoggerConfig = pLoggerConfig_ Nothing ""
 
 -- | A version of 'pLoggerConfig' that takes a prefix for the
 -- command line option.
@@ -268,28 +268,34 @@ pLoggerConfig = pLoggerConfig_ ""
 -- @since 0.2
 --
 pLoggerConfig_
-    ∷ T.Text
+    ∷ Maybe String
+        -- ^ Option group
+    → T.Text
         -- ^ prefix for this and all subordinate command line options.
     → MParser LoggerConfig
-pLoggerConfig_ prefix = id
+pLoggerConfig_ optionGroup prefix = id
     <$< loggerConfigQueueSize .:: option auto
         × long (T.unpack prefix ⊕ "queue-size")
         ⊕ metavar "INT"
         ⊕ help "size of the internal logger queue"
-    <*< loggerConfigThreshold .:: pLogLevel_ prefix
-    <*< loggerConfigPolicy .:: pLogPolicy_ prefix
+        ⊕ maybe mempty group optionGroup
+    <*< loggerConfigThreshold .:: pLogLevel_ optionGroup prefix
+    <*< loggerConfigPolicy .:: pLogPolicy_ optionGroup prefix
     <*< loggerConfigExceptionLimit .:: fmap Just × option auto
         × long (T.unpack prefix ⊕ "exception-limit")
         ⊕ metavar "INT"
         ⊕ help "maximal number of backend failures before and exception is raised"
+        ⊕ maybe mempty group optionGroup
     <*< loggerConfigExceptionWait .:: fmap Just × option auto
         × long (T.unpack prefix ⊕ "exception-wait")
         ⊕ metavar "INT"
         ⊕ help "time to wait after an backend failure occured"
+        ⊕ maybe mempty group optionGroup
     <*< loggerConfigExitTimeout .:: fmap Just × option auto
         × long (T.unpack prefix ⊕ "exit-timeout")
         ⊕ metavar "INT"
         ⊕ help "timeout for flushing the log message queue on exit"
+        ⊕ maybe mempty group optionGroup
 
 -- -------------------------------------------------------------------------- --
 -- Logger

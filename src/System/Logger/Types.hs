@@ -168,7 +168,7 @@ instance FromJSON LogLevel where
     parseJSON = withText "LogLevel" $ either fail return ∘ readLogLevel
 
 pLogLevel ∷ O.Parser LogLevel
-pLogLevel = pLogLevel_ ""
+pLogLevel = pLogLevel_ Nothing ""
 
 -- | A version of 'pLogLevel' that takes a prefix for the command line
 -- option.
@@ -176,13 +176,16 @@ pLogLevel = pLogLevel_ ""
 -- @since 0.2
 --
 pLogLevel_
-    ∷ T.Text
+    ∷ Maybe String
+        -- ^ Option group
+    → T.Text
         -- ^ prefix for the command line options.
     → O.Parser LogLevel
-pLogLevel_ prefix = option (eitherReader readLogLevel)
+pLogLevel_ optionGroup prefix = option (eitherReader readLogLevel)
     × long (T.unpack prefix ⊕ "log-level")
     ⊕ metavar "quiet|error|warn|info|debug"
     ⊕ help "threshold for log messages"
+    ⊕ maybe mempty group optionGroup
 
 -- -------------------------------------------------------------------------- --
 -- Log Policy
@@ -224,7 +227,7 @@ instance FromJSON LogPolicy where
     parseJSON = withText "LogPolicy" $ either fail return ∘ readLogPolicy
 
 pLogPolicy ∷ O.Parser LogPolicy
-pLogPolicy = pLogPolicy_ ""
+pLogPolicy = pLogPolicy_ Nothing ""
 
 -- | A version of 'pLogPolicy' that takes a prefix for the
 -- command line option.
@@ -232,13 +235,16 @@ pLogPolicy = pLogPolicy_ ""
 -- @since 0.2
 --
 pLogPolicy_
-    ∷ T.Text
+    ∷ Maybe String
+        -- ^ Option group
+    → T.Text
         -- ^ prefix for the command line options.
     → O.Parser LogPolicy
-pLogPolicy_ prefix = option (eitherReader readLogPolicy)
+pLogPolicy_ optionGroup prefix = option (eitherReader readLogPolicy)
     × long (T.unpack prefix ⊕ "log-policy")
     ⊕ metavar "block|raise|discard"
     ⊕ help "how to deal with a congested logging pipeline"
+    ⊕ maybe mempty group optionGroup
 
 -- -------------------------------------------------------------------------- --
 -- Log-Label

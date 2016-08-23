@@ -160,7 +160,7 @@ instance FromJSON (LogConfig → LogConfig) where
         <*< logConfigBackend %.: "backend" × o
 
 pLogConfig ∷ MParser LogConfig
-pLogConfig = pLogConfig_ ""
+pLogConfig = pLogConfig_ Nothing ""
 
 -- | A version of 'pLogConfig' that takes a prefix for the command
 -- line option.
@@ -168,9 +168,11 @@ pLogConfig = pLogConfig_ ""
 -- @since 0.2
 --
 pLogConfig_
-    ∷ T.Text
+    ∷ Maybe String
+        -- ^ Option group
+    → T.Text
         -- ^ prefix for this and all subordinate command line options.
     → MParser LogConfig
-pLogConfig_ prefix = id
-    <$< logConfigLogger %:: pLoggerConfig_ prefix
-    <*< logConfigBackend %:: pHandleBackendConfig_ prefix
+pLogConfig_ optionGroup prefix = id
+    <$< logConfigLogger %:: pLoggerConfig_ optionGroup prefix
+    <*< logConfigBackend %:: pHandleBackendConfig_ optionGroup prefix

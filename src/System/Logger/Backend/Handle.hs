@@ -143,7 +143,7 @@ instance FromJSON LoggerHandleConfig where
     parseJSON = withText "LoggerHandleConfig" $ either fail return ∘ readLoggerHandleConfig
 
 pLoggerHandleConfig ∷ O.Parser LoggerHandleConfig
-pLoggerHandleConfig = pLoggerHandleConfig_ ""
+pLoggerHandleConfig = pLoggerHandleConfig_ Nothing ""
 
 -- | A version of 'pLoggerHandleConfig' that takes a prefix for the
 -- command line option.
@@ -151,13 +151,16 @@ pLoggerHandleConfig = pLoggerHandleConfig_ ""
 -- @since 0.2
 --
 pLoggerHandleConfig_
-    ∷ T.Text
+    ∷ Maybe String
+        -- ^ Option group
+    → T.Text
         -- ^ prefix for the command line options.
     → O.Parser LoggerHandleConfig
-pLoggerHandleConfig_ prefix = option (eitherReader readLoggerHandleConfig)
+pLoggerHandleConfig_ optionGroup prefix = option (eitherReader readLoggerHandleConfig)
     × long (T.unpack prefix ⊕ "logger-backend-handle")
     ⊕ metavar "stdout|stderr|file:<FILENAME>"
     ⊕ help "handle where the logs are written"
+    ⊕ maybe mempty group optionGroup
 
 -- -------------------------------------------------------------------------- --
 -- Logger Backend Configuration
@@ -209,7 +212,7 @@ instance FromJSON (HandleBackendConfig → HandleBackendConfig) where
         <*< handleBackendConfigHandle ..: "handle" × o
 
 pHandleBackendConfig ∷ MParser HandleBackendConfig
-pHandleBackendConfig = pHandleBackendConfig_ ""
+pHandleBackendConfig = pHandleBackendConfig_ Nothing ""
 
 -- | A version of 'pLoggerHandleBackendConfig' that takes a prefix for the
 -- command line option.
@@ -217,12 +220,14 @@ pHandleBackendConfig = pHandleBackendConfig_ ""
 -- @since 0.2
 --
 pHandleBackendConfig_
-    ∷ T.Text
+    ∷ Maybe String
+        -- ^ Option group
+    → T.Text
         -- ^ prefix for this and all subordinate command line options.
     → MParser HandleBackendConfig
-pHandleBackendConfig_ prefix = id
-    <$< handleBackendConfigColor .:: pColorOption_ prefix
-    <*< handleBackendConfigHandle .:: pLoggerHandleConfig_ prefix
+pHandleBackendConfig_ optionGroup prefix = id
+    <$< handleBackendConfigColor .:: pColorOption_ optionGroup prefix
+    <*< handleBackendConfigHandle .:: pLoggerHandleConfig_ optionGroup prefix
 
 -- -------------------------------------------------------------------------- --
 -- Backend Implementation
