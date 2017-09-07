@@ -160,7 +160,7 @@ instance FromJSON (LogConfig → LogConfig) where
         <*< logConfigBackend %.: "backend" × o
 
 pLogConfig ∷ MParser LogConfig
-pLogConfig = pLogConfig_ Nothing ""
+pLogConfig = pLogConfig_ (Just "Logging Options") "logger-"
 
 -- | A version of 'pLogConfig' that takes a prefix for the command
 -- line option.

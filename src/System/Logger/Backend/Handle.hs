@@ -143,7 +143,7 @@ instance FromJSON LoggerHandleConfig where
     parseJSON = withText "LoggerHandleConfig" $ either fail return ∘ readLoggerHandleConfig
 
 pLoggerHandleConfig ∷ O.Parser LoggerHandleConfig
-pLoggerHandleConfig = pLoggerHandleConfig_ Nothing ""
+pLoggerHandleConfig = pLoggerHandleConfig_ (Just "Logging Options") "logger-"
 
 -- | A version of 'pLoggerHandleConfig' that takes a prefix for the
 -- command line option.
@@ -157,7 +157,7 @@ pLoggerHandleConfig_
         -- ^ prefix for the command line options.
     → O.Parser LoggerHandleConfig
 pLoggerHandleConfig_ optionGroup prefix = option (eitherReader readLoggerHandleConfig)
-    × long (T.unpack prefix ⊕ "logger-backend-handle")
+    × long (T.unpack prefix ⊕ "backend-handle")
     ⊕ metavar "stdout|stderr|file:<FILENAME>"
     ⊕ help "handle where the logs are written"
     ⊕ maybe mempty group optionGroup

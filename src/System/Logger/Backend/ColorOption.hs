@@ -114,7 +114,7 @@ instance FromJSON ColorOption where
     parseJSON = withText "ColorOption" $ either fail return ∘ readColorOption
 
 pColorOption ∷ O.Parser ColorOption
-pColorOption = pColorOption_ Nothing ""
+pColorOption = pColorOption_ (Just "Logging Options") "logger-"
 
 -- | A version of 'pColorOption' that takes a prefix for the
 -- command line option.
@@ -129,8 +129,8 @@ pColorOption_
     → O.Parser ColorOption
 pColorOption_ optionGroup prefix = option (eitherReader readColorOption)
     × long (T.unpack prefix ⊕ "color")
-    ⊕ short 'c'
     ⊕ help "whether to use ANSI terminal colors in the output"
+    ⊕ metavar "Auto|False|True"
     ⊕ maybe mempty group optionGroup
 
 useColor
