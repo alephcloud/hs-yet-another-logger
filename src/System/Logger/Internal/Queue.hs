@@ -1,3 +1,4 @@
+-- Copyright (c) 2016-2018 Lars Kuhtz <lakuhtz@gmail.com>
 -- Copyright (c) 2014-2015 PivotCloud, Inc.
 --
 -- System.Logger
@@ -19,9 +20,11 @@
 -- |
 -- Module: System.Logger.Internal.Queue
 -- Description: Queues for Usage with Yet Another Logger
--- Copyright: Copyright © 2015 PivotCloud, Inc.
+-- Copyright:
+--     Copyright © 2016-2018 Lars Kuhtz <lakuhtz@gmail.com>
+--     Copyright © 2015 PivotCloud, Inc.
 -- License: Apache-2.0
--- Maintainer: Lars Kuhtz <lkuhtz@pivotmail.com>
+-- Maintainer: Lars Kuhtz <lakuhtz@gmail.com>
 -- Stability: experimental
 --
 
@@ -31,7 +34,6 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
@@ -42,13 +44,6 @@ module System.Logger.Internal.Queue
 , TBMChan
 ) where
 
-#ifndef MIN_VERSION_base
-#define MIN_VERSION_base(x,y,z) = 1
-#endif
-
-#if ! MIN_VERSION_base(4,8,0)
-import Control.Applicative
-#endif
 import Control.Concurrent
 import Control.Concurrent.STM
 import Control.Concurrent.STM.TBMChan

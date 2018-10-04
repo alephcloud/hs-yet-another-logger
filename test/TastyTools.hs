@@ -1,3 +1,4 @@
+-- Copyright (c) 2016-2018 Lars Kuhtz <lakuhtz@gmail.com>
 -- Copyright (c) 2013-2015 PivotCloud, Inc. All Rights Reserved.
 --
 -- NOTICE: The dissemination, reproduction, or copying of this file and the
@@ -8,9 +9,11 @@
 
 -- |
 -- Module: TastyTools
--- Copyright: Copyright (c) 2013-2015 PivotCloud, Inc. All Rights Reserved.
+-- Copyright:
+--     Copyright (c) 2016-2018 Lars Kuhtz <lakuhtz@gmail.com>
+--     Copyright (c) 2013-2015 PivotCloud, Inc. All Rights Reserved.
 -- License: All Rights Reserved, see LICENSE file of the package
--- Maintainer: code@pivotmail.com
+-- Maintainer: Lars Kuhtz <lakuhtz@gmail>
 -- Stability: experimental
 --
 
@@ -32,15 +35,8 @@ module TastyTools
 , testCaseSteps
 ) where
 
-#ifndef MIN_VERSION_base
-#define MIN_VESION_base(x,y,z) 1
-#endif
-
 import Configuration.Utils (boolReader)
 
-#if ! MIN_VERSION_base(4,8,0)
-import Control.Applicative
-#endif
 import Control.Exception (try)
 import Control.Monad
 import Control.Monad.IO.Class

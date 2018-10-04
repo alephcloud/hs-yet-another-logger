@@ -1,3 +1,4 @@
+-- Copyright (c) 2016-2018 Lars Kuhtz <lakuhtz@gmail.com>
 -- Copyright (c) 2014-2015 PivotCloud, Inc.
 --
 -- System.Logger.Backend.Handle
@@ -19,9 +20,11 @@
 -- |
 -- Module: System.Logger.Backend.Handle
 -- Description: Handle Backend for Yet Another Logger
--- Copyright: Copyright (c) 2014-2015 PivotCloud, Inc.
+-- Copyright:
+--     Copyright (c) 2016-2018 Lars Kuhtz <lakuhtz@gmail.com>
+--     Copyright (c) 2014-2015 PivotCloud, Inc.
 -- License: Apache License, Version 2.0
--- Maintainer: Lars Kuhtz <lkuhtz@pivotmail.com>
+-- Maintainer: Lars Kuhtz <lakuhtz@gmail.com>
 -- Stability: experimental
 --
 
@@ -31,7 +34,6 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE UnicodeSyntax #-}
@@ -61,10 +63,6 @@ module System.Logger.Backend.Handle
 , handleBackend
 , handleBackend_
 ) where
-
-#ifndef MIN_VERSION_deepseq
-#define MIN_VESION_deepseq(a,b,c) 1
-#endif
 
 import Configuration.Utils hiding (Lens', Error)
 import Configuration.Utils.Validation
@@ -176,12 +174,7 @@ handleBackendConfigColor = lens _handleBackendConfigColor $ \a b → a { _handle
 handleBackendConfigHandle ∷ Lens' HandleBackendConfig LoggerHandleConfig
 handleBackendConfigHandle = lens _handleBackendConfigHandle $ \a b → a { _handleBackendConfigHandle = b }
 
-#if MIN_VERSION_deepseq(1,4,0)
 instance NFData HandleBackendConfig
-#else
-instance NFData HandleBackendConfig where
-    rnf (HandleBackendConfig a0 a1) = rnf a0 `seq` rnf a1
-#endif
 
 defaultHandleBackendConfig ∷ HandleBackendConfig
 defaultHandleBackendConfig = HandleBackendConfig

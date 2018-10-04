@@ -1,7 +1,7 @@
 -- |
 -- Module: System.Logger.Internal
 -- Copyright:
---     Copyright (c) 2016 Lars Kuhtz <lakuhtz@gmail.com>
+--     Copyright (c) 2016-2018 Lars Kuhtz <lakuhtz@gmail.com>
 --     Copyright (c) 2014-2015 PivotCloud, Inc.
 -- License: Apache License, Version 2.0
 -- Maintainer: Lars Kuhtz <lakuhtz@gmail.com>
@@ -19,10 +19,6 @@ module System.Logger.Internal
 , timeSpecToUtc
 ) where
 
-#ifndef MIN_VERSION_time
-#define MIN_VERSION_time(a,b,c) 1
-#endif
-
 import Data.Monoid.Unicode
 import Data.Time.Clock
 import Data.Time.Clock.POSIX
@@ -34,10 +30,6 @@ import Numeric.Natural
 import Prelude.Unicode
 
 import System.Clock
-
-#if !MIN_VERSION_time(1,5,0)
-import System.Locale (defaultTimeLocale)
-#endif
 
 sshow
     ∷ (Show a, IsString b)

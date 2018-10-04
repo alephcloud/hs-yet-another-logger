@@ -3,22 +3,16 @@ sudo: false
 
 matrix:
     include:
-        - env: CABALVER=1.18 GHCVER=7.8.4 DETAILS=always
-          addons: {apt: {packages: [cabal-install-1.18,ghc-7.8.4], sources: [hvr-ghc]}}
-        - env: CABALVER=1.20 GHCVER=7.8.4
-          addons: {apt: {packages: [cabal-install-1.20,ghc-7.8.4], sources: [hvr-ghc]}}
-
-        - env: CABALVER=1.22 GHCVER=7.10.3 DEEPSEQ="--constraint=deepseq>=1.4"
-          addons: {apt: {packages: [cabal-install-1.22,ghc-7.10.3],sources: [hvr-ghc]}}
-        - env: CABALVER=1.22 GHCVER=7.10.3 AESON="--constraint=aeson<0.11"
-          addons: {apt: {packages: [cabal-install-1.22,ghc-7.10.3],sources: [hvr-ghc]}}
-        - env: CABALVER=1.22 GHCVER=7.10.3 AESON="--constraint=aeson==0.11.0.0"
-          addons: {apt: {packages: [cabal-install-1.22,ghc-7.10.3],sources: [hvr-ghc]}}
         - env: CABALVER=1.22 GHCVER=7.10.3
           addons: {apt: {packages: [cabal-install-1.22,ghc-7.10.3],sources: [hvr-ghc]}}
-
         - env: CABALVER=1.24 GHCVER=8.0.1
           addons: {apt: {packages: [cabal-install-1.24,ghc-8.0.1],sources: [hvr-ghc]}}
+        - env: CABALVER=2.0 GHCVER=8.2.1
+          addons: {apt: {packages: [cabal-install-2.0,ghc-8.2.1],sources: [hvr-ghc]}}
+        - env: CABALVER=2.2 GHCVER=8.4.3
+          addons: {apt: {packages: [cabal-install-2.2,ghc-8.4.3],sources: [hvr-ghc]}}
+        - env: CABALVER=2.4 GHCVER=8.6.1
+          addons: {apt: {packages: [cabal-install-2.4,ghc-8.6.1],sources: [hvr-ghc]}}
 
 before_install:
     - export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$PATH
@@ -31,11 +25,11 @@ install:
     - cabal install --only-dependencies --enable-tests $DEEPSEQ $AESON $CABALCONSTR -j4
 
 script:
-    - cabal configure --enable-tests $DEEPSEQ $AESON $CABALCONSTR
+    - cabal configure --enable-tests $CABALCONSTR
     - cabal build -j4
     - travis_wait cabal test --show-details=${DETAILS:-streaming} -j2 --test-option=+RTS --test-option=-N2
     - cabal check
     - cabal sdist
     - SRC_TGZ=$(cabal info . | awk '{print $2;exit}').tar.gz &&
-      (cd dist && cabal install --force-reinstalls $DEEPSEQ $AESON $CABALCONSTR -j4 "$SRC_TGZ")
+      (cd dist && cabal install --force-reinstalls $CABALCONSTR -j4 "$SRC_TGZ")
 
