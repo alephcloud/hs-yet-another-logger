@@ -1,3 +1,4 @@
+-- Copyright (c) 2016-2018 Lars Kuhtz <lakuhtz@gmail.com>
 -- Copyright (c) 2014-2015 PivotCloud, Inc.
 --
 -- System.Logger.Logger.Internal
@@ -19,9 +20,11 @@
 -- |
 -- Module: System.Logger.Logger.Internal
 -- Description: Yet Another Logger Implementation
--- Copyright: Copyright (c) 2014-2015 PivotCloud, Inc.
+-- Copyright:
+--     Copyright (c) 2016-2018 Lars Kuhtz <lakuhtz@gmail.com>
+--     Copyright (c) 2014-2015 PivotCloud, Inc.
 -- License: Apache License, Version 2.0
--- Maintainer: Lars Kuhtz <lkuhtz@pivotmail.com>
+-- Maintainer: Lars Kuhtz <lakuhtz@gmail.com>
 -- Stability: experimental
 --
 -- This module provides a logger that implements the logger interface
@@ -79,18 +82,6 @@ module System.Logger.Logger.Internal
 , runLogT
 ) where
 
-#ifndef MIN_VERSION_base
-#define MIN_VERSION_base(a,b,c) 1
-#endif
-
-#ifndef MIN_VERSION_deepseq
-#define MIN_VERSION_deepseq(a,b,c) 1
-#endif
-
-#ifndef MIN_VERSION_aeson
-#define MIN_VERSION_aeson(a,b,c) 1
-#endif
-
 import Configuration.Utils hiding (Lens', Error)
 
 import Control.Concurrent (threadDelay)
@@ -127,23 +118,6 @@ import System.Timeout
 import System.Logger.Internal
 import System.Logger.Internal.Queue
 import System.Logger.Types
-
-#if ! MIN_VERSION_aeson(0,11,1) && ! ( MIN_VERSION_base(4,8,0) && MIN_VERSION_aeson(0,11,0) )
-
--- -------------------------------------------------------------------------- --
--- Orphans
-
-instance ToJSON Natural where
-    toJSON = Number ∘ fromIntegral
-
-instance FromJSON Natural where
-    parseJSON = withScientific "Natural" $ \n →
-        if n < 0
-          then fail $ "expected a natural number but got " ⊕ show n
-          else pure $ floor n
-          -- this seems a little odd but corresponds to all other aeson
-          -- instances for integral types
-#endif
 
 -- -------------------------------------------------------------------------- --
 -- Logger Configuration
@@ -203,18 +177,7 @@ loggerConfigExceptionWait = lens _loggerConfigExceptionWait $ \a b → a { _logg
 loggerConfigExitTimeout ∷ Lens' LoggerConfig (Maybe Natural)
 loggerConfigExitTimeout = lens _loggerConfigExitTimeout $ \a b → a { _loggerConfigExitTimeout = b }
 
-#if ! MIN_VERSION_deepseq(1,4,0) || ! MIN_VERSION_base(4,8,0)
-instance NFData Natural where
-    rnf a = a `seq` ()
-#endif
-
-#if MIN_VERSION_deepseq(1,4,0)
 instance NFData LoggerConfig
-#else
-instance NFData LoggerConfig where
-    rnf (LoggerConfig a0 a1 a2 a3 a4 a5 a6) =
-        rnf a0 `seq` rnf a1 `seq` rnf a2 `seq` rnf a3 `seq` rnf a4 `seq` rnf a5 `seq` rnf a6
-#endif
 
 -- | Default Logger configuration
 --

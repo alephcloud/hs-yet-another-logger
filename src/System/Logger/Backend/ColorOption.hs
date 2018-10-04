@@ -1,3 +1,4 @@
+-- Copyright (c) 2016-2018 Lars Kuhtz <lakuhtz@gmail.com>
 -- Copyright (c) 2014-2015 PivotCloud, Inc.
 --
 -- System.Logger.Backend.ColorOption
@@ -18,9 +19,11 @@
 
 -- |
 -- Module: System.Logger.Backend.ColorOption
--- Copyright: Copyright (c) 2014-2015 PivotCloud, Inc.
+-- Copyright:
+--     Copyright (c) 2016-2018 Lars Kuhtz <lakuhtz@gmail.com>
+--     Copyright (c) 2014-2015 PivotCloud, Inc.
 -- License: Apache License, Version 2.0
--- Maintainer: Lars Kuhtz <lkuhtz@pivotmail.com>
+-- Maintainer: Lars Kuhtz <lakuhtz@gmail.com>
 -- Stability: experimental
 --
 -- An option that indicates whether ANSI color escapes shall
@@ -29,7 +32,6 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE UnicodeSyntax #-}
@@ -44,19 +46,12 @@ module System.Logger.Backend.ColorOption
 , useColor
 ) where
 
-#ifndef MIN_VERSION_base
-#define MIN_VERSION_base(x,y,z) 1
-#endif
-
 import Configuration.Utils
 
 import Control.DeepSeq
 import Control.Monad.Except
 
 import qualified Data.CaseInsensitive as CI
-#if ! MIN_VERSION_base(4,8,0)
-import Data.Monoid
-#endif
 import Data.Monoid.Unicode
 import Data.String
 import qualified Data.Text as T
