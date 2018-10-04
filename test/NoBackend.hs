@@ -128,7 +128,7 @@ noBackendTests = testGroup "no backend" ∘ map tc
     tc args = testCaseSteps (sshow args) $ \logLogStr →
         catchAny
             (noBackendLoggerTest logLogStr args)
-            (\e → assertString $ "unexpected exception: " ⊕ show e)
+            (\e → assertFailure $ "unexpected exception: " ⊕ show e)
 
 -- Buggy Backend that calls 'BackendTerminatedException'.
 --
@@ -139,7 +139,7 @@ buggyBackendTests m n =
     tc args = testCaseSteps (sshow args) $ \logLogStr →
         do
             buggyBackendLoggerTest exception (\x → x `mod` m <= n) logLogStr args
-            assertString $ "Missing expected exception"
+            assertFailure "Missing expected exception"
         `catch` \(e ∷ LoggerException Void) → case e of
             BackendTerminatedException e0 → case fromException e0 of
                 Just BuggyBackendException → logLogStr $ "test: expected exception: " ⊕ sshow e
@@ -159,7 +159,7 @@ buggyRecoverBackendTests m n =
         do
             buggyBackendLoggerTest exception (\x → x `mod` n <= m) logLogStr args
         `catchAny` \e →
-            assertString $ "test: unexpected exception: " ⊕ show e
+            assertFailure $ "test: unexpected exception: " ⊕ show e
     exception = BuggyBackendException
 
 -- | Buggy Backend that calls some exception.
@@ -176,7 +176,7 @@ buggyNoRecoverBackendTests m n =
             -- Make sure to configure the exitWait and exceptionWait so that
             -- the backend has enough time to deliver enough messages to trigger
             -- and exception.
-            assertString $ "Missing expected exception: " ⊕ sshow exception
+            assertFailure $ "Missing expected exception: " ⊕ sshow exception
         `catch` \(e ∷ LoggerException Void) → case e of
             BackendTooManyExceptions (e0:_) → case fromException e0 of
                 Just BuggyBackendException → logLogStr $ "test: expected exception: " ⊕ sshow e
