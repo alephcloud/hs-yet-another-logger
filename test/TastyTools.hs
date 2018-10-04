@@ -88,13 +88,13 @@ instance IsTest TestCaseProgress where
     run opts (TestCaseProgress testAssertion) prog = do
         outRef ← newIORef ""
         try (testAssertion $ step outRef) >>= \case
-            Left (HUnitFailure errMsg) → if verbose
+            Left e@HUnitFailure{} → if verbose
               then do
                 output ← readIORef outRef
                 return ∘ testFailed ∘ LT.unpack ∘ LT.toLazyText $
-                    output ⊕ "\n" ⊕ LT.fromString errMsg
+                    output ⊕ "\n" ⊕ LT.fromString (show e)
               else
-                return ∘ testFailed $ errMsg
+                return ∘ testFailed $ show e
             Right () → if verbose
                 then
                     testPassed ∘ LT.unpack ∘ LT.toLazyText <$> readIORef outRef
