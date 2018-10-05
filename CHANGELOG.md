@@ -1,9 +1,24 @@
+0.3.1
+=====
+
+*   Add support for tasty-hunit >= 0.10.
+
+*   Raise lower bounds on some dependencies:
+    *   base >= 4.8
+    *   deepseq >= 1.4
+    *   aeson >= 0.11
+    *   time >= 1.5
+
+*   Require Cabal >= 1.22.
+
+*   Drop support for GHC < 7.10.
+
 0.3.0
 =====
 
 *   Remove `EitherT` instance. It's recommended to use `ExceptT` instead.
 
-*   Remove `TraceT` instace. It's not actively maintained any more.
+*   Remove `TraceT` instance. It's not actively maintained any more.
 
 *   Support aeson >= 0.11, which comes with instances for `Natural`.
 
