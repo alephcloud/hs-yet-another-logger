@@ -178,7 +178,7 @@ pLogLevel_
         -- ^ prefix for the command line options.
     → O.Parser LogLevel
 pLogLevel_ prefix = option (eitherReader readLogLevel)
-    × long (T.unpack prefix ⊕ "log-level")
+    % long (T.unpack prefix ⊕ "log-level")
     ⊕ metavar "quiet|error|warn|info|debug"
     ⊕ help "threshold for log messages"
 
@@ -234,7 +234,7 @@ pLogPolicy_
         -- ^ prefix for the command line options.
     → O.Parser LogPolicy
 pLogPolicy_ prefix = option (eitherReader readLogPolicy)
-    × long (T.unpack prefix ⊕ "log-policy")
+    % long (T.unpack prefix ⊕ "log-policy")
     ⊕ metavar "block|raise|discard"
     ⊕ help "how to deal with a congested logging pipeline"
 
@@ -547,4 +547,3 @@ instance (Show a, Typeable a, NFData a, MonadIO m, LoggerCtx ctx a) ⇒ MonadLog
     {-# INLINE withLevel #-}
     {-# INLINE withPolicy #-}
     {-# INLINE localScope #-}
-

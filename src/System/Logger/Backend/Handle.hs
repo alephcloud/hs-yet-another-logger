@@ -29,12 +29,12 @@
 --
 
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
@@ -64,7 +64,7 @@ module System.Logger.Backend.Handle
 , handleBackend_
 ) where
 
-import Configuration.Utils hiding (Lens', Error)
+import Configuration.Utils hiding (Error, Lens')
 import Configuration.Utils.Validation
 
 import Control.DeepSeq
@@ -78,8 +78,8 @@ import qualified Data.List as L
 import Data.Monoid.Unicode
 import Data.String
 import qualified Data.Text as T
-import Data.Text.Lens
 import qualified Data.Text.IO as T
+import Data.Text.Lens
 import Data.Typeable
 
 import GHC.Generics
@@ -153,7 +153,7 @@ pLoggerHandleConfig_
         -- ^ prefix for the command line options.
     → O.Parser LoggerHandleConfig
 pLoggerHandleConfig_ prefix = option (eitherReader readLoggerHandleConfig)
-    × long (T.unpack prefix ⊕ "logger-backend-handle")
+    % long (T.unpack prefix ⊕ "logger-backend-handle")
     ⊕ metavar "stdout|stderr|file:<FILENAME>"
     ⊕ help "handle where the logs are written"
 
@@ -198,8 +198,8 @@ instance ToJSON HandleBackendConfig where
 
 instance FromJSON (HandleBackendConfig → HandleBackendConfig) where
     parseJSON = withObject "HandleBackendConfig" $ \o → id
-        <$< handleBackendConfigColor ..: "color" × o
-        <*< handleBackendConfigHandle ..: "handle" × o
+        <$< handleBackendConfigColor ..: "color" % o
+        <*< handleBackendConfigHandle ..: "handle" % o
 
 pHandleBackendConfig ∷ MParser HandleBackendConfig
 pHandleBackendConfig = pHandleBackendConfig_ ""
@@ -308,4 +308,3 @@ handleBackend_ format h colored eitherMsg = do
     inBlue ∷ T.Text → T.Text
     inBlue = inColor A.Dull A.Blue
 {-# INLINEABLE handleBackend_ #-}
-
