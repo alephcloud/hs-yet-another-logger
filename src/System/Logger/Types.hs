@@ -1,4 +1,4 @@
--- Copyright (c) 2016-2018 Lars Kuhtz <lakuhtz@gmail.com>
+-- Copyright (c) 2016-2020 Lars Kuhtz <lakuhtz@gmail.com>
 -- Copyright (c) 2014-2015 PivotCloud, Inc.
 --
 -- System.Logger.Types
@@ -21,7 +21,7 @@
 -- Module: System.Logger.Types
 -- Description: Basic Types of Yet Another Logger
 -- Copyright:
---     Copyright (c) 2016-2018 Lars Kuhtz <lakuhtz@gmail.com>
+--     Copyright (c) 2016-2020 Lars Kuhtz <lakuhtz@gmail.com>
 --     Copyright (c) 2014-2015 PivotCloud, Inc.
 -- License: Apache License, Version 2.0
 -- Maintainer: Lars Kuhtz <lakuhtz@gmail.com>
@@ -43,6 +43,8 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE UnicodeSyntax #-}
+
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module System.Logger.Types
 (
@@ -178,7 +180,7 @@ pLogLevel_
         -- ^ prefix for the command line options.
     → O.Parser LogLevel
 pLogLevel_ prefix = option (eitherReader readLogLevel)
-    × long (T.unpack prefix ⊕ "log-level")
+    % long (T.unpack prefix ⊕ "log-level")
     ⊕ metavar "quiet|error|warn|info|debug"
     ⊕ help "threshold for log messages"
 
@@ -234,7 +236,7 @@ pLogPolicy_
         -- ^ prefix for the command line options.
     → O.Parser LogPolicy
 pLogPolicy_ prefix = option (eitherReader readLogPolicy)
-    × long (T.unpack prefix ⊕ "log-policy")
+    % long (T.unpack prefix ⊕ "log-policy")
     ⊕ metavar "block|raise|discard"
     ⊕ help "how to deal with a congested logging pipeline"
 
@@ -547,4 +549,3 @@ instance (Show a, Typeable a, NFData a, MonadIO m, LoggerCtx ctx a) ⇒ MonadLog
     {-# INLINE withLevel #-}
     {-# INLINE withPolicy #-}
     {-# INLINE localScope #-}
-

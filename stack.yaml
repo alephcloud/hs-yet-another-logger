@@ -1,0 +1,4 @@
+resolver: lts-15.7
+
+extra-deps:
+  - configuration-tools-0.5.0

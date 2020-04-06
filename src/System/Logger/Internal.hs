@@ -1,7 +1,7 @@
 -- |
 -- Module: System.Logger.Internal
 -- Copyright:
---     Copyright (c) 2016-2018 Lars Kuhtz <lakuhtz@gmail.com>
+--     Copyright (c) 2016-2020 Lars Kuhtz <lakuhtz@gmail.com>
 --     Copyright (c) 2014-2015 PivotCloud, Inc.
 -- License: Apache License, Version 2.0
 -- Maintainer: Lars Kuhtz <lakuhtz@gmail.com>
@@ -20,10 +20,10 @@ module System.Logger.Internal
 ) where
 
 import Data.Monoid.Unicode
+import Data.String
 import Data.Time.Clock
 import Data.Time.Clock.POSIX
 import Data.Time.Format
-import Data.String
 
 import Numeric.Natural
 
@@ -88,4 +88,3 @@ timeSpecToUtc
     → UTCTime
 timeSpecToUtc (TimeSpec s ns) =
     posixSecondsToUTCTime (realToFrac s + realToFrac ns * 1e-9)
-

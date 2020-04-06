@@ -29,13 +29,13 @@
 -- "System.Logger.Backend.Handle".
 --
 
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
@@ -156,8 +156,8 @@ instance ToJSON LogConfig where
 
 instance FromJSON (LogConfig → LogConfig) where
     parseJSON = withObject "LogConfig" $ \o → id
-        <$< logConfigLogger %.: "logger" × o
-        <*< logConfigBackend %.: "backend" × o
+        <$< logConfigLogger %.: "logger" % o
+        <*< logConfigBackend %.: "backend" % o
 
 pLogConfig ∷ MParser LogConfig
 pLogConfig = pLogConfig_ ""

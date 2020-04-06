@@ -1,4 +1,4 @@
--- Copyright (c) 2016-2018 Lars Kuhtz <lakuhtz@gmail.com>
+-- Copyright (c) 2016-2020 Lars Kuhtz <lakuhtz@gmail.com>
 -- Copyright (c) 2014-2015 PivotCloud, Inc.
 --
 -- System.Logger
@@ -21,7 +21,7 @@
 -- Module: System.Logger.Internal.Queue
 -- Description: Queues for Usage with Yet Another Logger
 -- Copyright:
---     Copyright © 2016-2018 Lars Kuhtz <lakuhtz@gmail.com>
+--     Copyright © 2016-2020 Lars Kuhtz <lakuhtz@gmail.com>
 --     Copyright © 2015 PivotCloud, Inc.
 -- License: Apache-2.0
 -- Maintainer: Lars Kuhtz <lakuhtz@gmail.com>
@@ -31,9 +31,9 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
@@ -138,4 +138,3 @@ instance BoundedCloseableQueue (FairTBMQueue a) a where
     tryWriteQueue FairTBMQueue{..} a = do
         withMVar fairTBMQueueLock $ \_ → do
             tryWriteQueue fairTBMQueueQueue a
-

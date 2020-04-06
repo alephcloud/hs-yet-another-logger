@@ -1,4 +1,4 @@
--- Copyright (c) 2016-2018 Lars Kuhtz <lakuhtz@gmail.com>
+-- Copyright (c) 2016-2020 Lars Kuhtz <lakuhtz@gmail.com>
 -- Copyright (c) 2014-2015 PivotCloud, Inc.
 --
 -- System.Logger.Backend.ColorOption
@@ -20,7 +20,7 @@
 -- |
 -- Module: System.Logger.Backend.ColorOption
 -- Copyright:
---     Copyright (c) 2016-2018 Lars Kuhtz <lakuhtz@gmail.com>
+--     Copyright (c) 2016-2020 Lars Kuhtz <lakuhtz@gmail.com>
 --     Copyright (c) 2014-2015 PivotCloud, Inc.
 -- License: Apache License, Version 2.0
 -- Maintainer: Lars Kuhtz <lakuhtz@gmail.com>
@@ -121,7 +121,7 @@ pColorOption_
         -- ^ prefix for the command line options.
     → O.Parser ColorOption
 pColorOption_ prefix = option (eitherReader readColorOption)
-   × long (T.unpack prefix ⊕ "color")
+   % long (T.unpack prefix ⊕ "color")
    ⊕ short 'c'
    ⊕ help "whether to use ANSI terminal colors in the output"
 
@@ -132,4 +132,3 @@ useColor
 useColor ColorFalse _ = return False
 useColor ColorTrue _ = return True
 useColor ColorAuto handle = A.hSupportsANSI handle
-

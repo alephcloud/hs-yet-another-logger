@@ -1,4 +1,4 @@
--- Copyright (c) 2016-2018 Lars Kuhtz <lakuhtz@gmail.com>
+-- Copyright (c) 2016-2020 Lars Kuhtz <lakuhtz@gmail.com>
 -- Copyright (c) 2014-2015 PivotCloud, Inc.
 --
 -- System.Logger.Logger.Internal
@@ -21,7 +21,7 @@
 -- Module: System.Logger.Logger.Internal
 -- Description: Yet Another Logger Implementation
 -- Copyright:
---     Copyright (c) 2016-2018 Lars Kuhtz <lakuhtz@gmail.com>
+--     Copyright (c) 2016-2020 Lars Kuhtz <lakuhtz@gmail.com>
 --     Copyright (c) 2014-2015 PivotCloud, Inc.
 -- License: Apache License, Version 2.0
 -- Maintainer: Lars Kuhtz <lakuhtz@gmail.com>
@@ -35,11 +35,11 @@
 --
 
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE GADTs #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -82,25 +82,25 @@ module System.Logger.Logger.Internal
 , runLogT
 ) where
 
-import Configuration.Utils hiding (Lens', Error)
+import Configuration.Utils hiding (Error, Lens')
 
 import Control.Concurrent (threadDelay)
 import Control.Concurrent.Async
 -- FIXME: use a better data structure with non-amortized complexity bounds
-import Control.Monad.STM
 import Control.Concurrent.STM.TVar
 import Control.DeepSeq
-import Control.Exception.Lifted
 import Control.Exception.Enclosed
+import Control.Exception.Lifted
 import Control.Lens hiding ((.=))
 import Control.Monad.Except
+import Control.Monad.STM
 import Control.Monad.Trans.Control
 import Control.Monad.Unicode
 
 import Data.Monoid.Unicode
 import qualified Data.Text as T
-import Data.Typeable
 import qualified Data.Text.IO as T (hPutStrLn)
+import Data.Typeable
 import Data.Void
 
 import GHC.Generics
@@ -214,13 +214,13 @@ instance ToJSON LoggerConfig where
 
 instance FromJSON (LoggerConfig → LoggerConfig) where
     parseJSON = withObject "LoggerConfig" $ \o → id
-        <$< loggerConfigQueueSize ..: "queue_size" × o
-        <*< loggerConfigThreshold ..: "log_level" × o
-        <*< loggerConfigScope ..: "scope" × o
-        <*< loggerConfigPolicy ..: "policy" × o
-        <*< loggerConfigExceptionLimit ..: "exception_limit" × o
-        <*< loggerConfigExceptionWait ..: "exception_wait" × o
-        <*< loggerConfigExitTimeout ..: "exit_timeout" × o
+        <$< loggerConfigQueueSize ..: "queue_size" % o
+        <*< loggerConfigThreshold ..: "log_level" % o
+        <*< loggerConfigScope ..: "scope" % o
+        <*< loggerConfigPolicy ..: "policy" % o
+        <*< loggerConfigExceptionLimit ..: "exception_limit" % o
+        <*< loggerConfigExceptionWait ..: "exception_wait" % o
+        <*< loggerConfigExitTimeout ..: "exit_timeout" % o
 
 pLoggerConfig ∷ MParser LoggerConfig
 pLoggerConfig = pLoggerConfig_ ""
@@ -236,21 +236,21 @@ pLoggerConfig_
     → MParser LoggerConfig
 pLoggerConfig_ prefix = id
     <$< loggerConfigQueueSize .:: option auto
-        × long (T.unpack prefix ⊕ "queue-size")
+        % long (T.unpack prefix ⊕ "queue-size")
         ⊕ metavar "INT"
         ⊕ help "size of the internal logger queue"
     <*< loggerConfigThreshold .:: pLogLevel_ prefix
     <*< loggerConfigPolicy .:: pLogPolicy_ prefix
-    <*< loggerConfigExceptionLimit .:: fmap Just × option auto
-        × long (T.unpack prefix ⊕ "exception-limit")
+    <*< loggerConfigExceptionLimit .:: fmap Just % option auto
+        % long (T.unpack prefix ⊕ "exception-limit")
         ⊕ metavar "INT"
         ⊕ help "maximal number of backend failures before and exception is raised"
-    <*< loggerConfigExceptionWait .:: fmap Just × option auto
-        × long (T.unpack prefix ⊕ "exception-wait")
+    <*< loggerConfigExceptionWait .:: fmap Just % option auto
+        % long (T.unpack prefix ⊕ "exception-wait")
         ⊕ metavar "INT"
         ⊕ help "time to wait after an backend failure occured"
-    <*< loggerConfigExitTimeout .:: fmap Just × option auto
-        × long (T.unpack prefix ⊕ "exit-timeout")
+    <*< loggerConfigExitTimeout .:: fmap Just % option auto
+        % long (T.unpack prefix ⊕ "exit-timeout")
         ⊕ metavar "INT"
         ⊕ help "timeout for flushing the log message queue on exit"
 
@@ -286,14 +286,6 @@ data Logger a = Logger
     }
     deriving (Typeable, Generic)
 
-loggerQueue ∷ Lens' (Logger a) (LoggerQueue a)
-loggerQueue = lens _loggerQueue $ \a b → a { _loggerQueue = b }
-{-# INLINE loggerQueue #-}
-
-loggerWorker ∷ Lens' (Logger a) (Async ())
-loggerWorker = lens _loggerWorker $ \a b → a { _loggerWorker = b }
-{-# INLINE loggerWorker #-}
-
 loggerThreshold ∷ Lens' (Logger a) LogLevel
 loggerThreshold = lens _loggerThreshold $ \a b → a { _loggerThreshold = b }
 {-# INLINE loggerThreshold #-}
@@ -305,18 +297,6 @@ loggerScope = lens _loggerScope $ \a b → a { _loggerScope = b }
 loggerPolicy ∷ Lens' (Logger a) LogPolicy
 loggerPolicy = lens _loggerPolicy $ \a b → a { _loggerPolicy = b }
 {-# INLINE loggerPolicy #-}
-
-loggerMissed ∷ Lens' (Logger a) (TVar Natural)
-loggerMissed = lens _loggerMissed $ \a b → a { _loggerMissed = b }
-{-# INLINE loggerMissed #-}
-
-loggerExitTimeout ∷ Lens' (Logger a) (Maybe Natural)
-loggerExitTimeout = lens _loggerExitTimeout $ \a b → a { _loggerExitTimeout = b }
-{-# INLINE loggerExitTimeout #-}
-
-loggerErrLogFunction ∷ Lens' (Logger a) (T.Text → IO ())
-loggerErrLogFunction = lens _loggerErrLogFunction $ \a b → a { _loggerErrLogFunction = b }
-{-# INLINE loggerErrLogFunction #-}
 
 -- | Create a new logger. A logger created with this function must be released
 -- with a call to 'releaseLogger' and must not be used after it is released.
@@ -684,5 +664,3 @@ logErrorsG level label p = p `catchError` \e → do
     loggG level $ label ⊕ " failed: "  ⊕ T.intercalate " <|> " e
     throwError [label ⊕ " failed"]
 -}
-
-
