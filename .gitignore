@@ -1,1 +1,3 @@
 dist
+*.hie
+.stack-work/*
