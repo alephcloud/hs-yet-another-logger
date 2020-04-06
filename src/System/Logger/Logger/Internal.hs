@@ -286,14 +286,6 @@ data Logger a = Logger
     }
     deriving (Typeable, Generic)
 
-loggerQueue ∷ Lens' (Logger a) (LoggerQueue a)
-loggerQueue = lens _loggerQueue $ \a b → a { _loggerQueue = b }
-{-# INLINE loggerQueue #-}
-
-loggerWorker ∷ Lens' (Logger a) (Async ())
-loggerWorker = lens _loggerWorker $ \a b → a { _loggerWorker = b }
-{-# INLINE loggerWorker #-}
-
 loggerThreshold ∷ Lens' (Logger a) LogLevel
 loggerThreshold = lens _loggerThreshold $ \a b → a { _loggerThreshold = b }
 {-# INLINE loggerThreshold #-}
@@ -305,18 +297,6 @@ loggerScope = lens _loggerScope $ \a b → a { _loggerScope = b }
 loggerPolicy ∷ Lens' (Logger a) LogPolicy
 loggerPolicy = lens _loggerPolicy $ \a b → a { _loggerPolicy = b }
 {-# INLINE loggerPolicy #-}
-
-loggerMissed ∷ Lens' (Logger a) (TVar Natural)
-loggerMissed = lens _loggerMissed $ \a b → a { _loggerMissed = b }
-{-# INLINE loggerMissed #-}
-
-loggerExitTimeout ∷ Lens' (Logger a) (Maybe Natural)
-loggerExitTimeout = lens _loggerExitTimeout $ \a b → a { _loggerExitTimeout = b }
-{-# INLINE loggerExitTimeout #-}
-
-loggerErrLogFunction ∷ Lens' (Logger a) (T.Text → IO ())
-loggerErrLogFunction = lens _loggerErrLogFunction $ \a b → a { _loggerErrLogFunction = b }
-{-# INLINE loggerErrLogFunction #-}
 
 -- | Create a new logger. A logger created with this function must be released
 -- with a call to 'releaseLogger' and must not be used after it is released.

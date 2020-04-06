@@ -44,6 +44,8 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
+{-# OPTIONS_GHC -fno-warn-orphans #-}
+
 module System.Logger.Types
 (
 -- * LogLevel
