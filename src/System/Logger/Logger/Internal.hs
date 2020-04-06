@@ -214,13 +214,13 @@ instance ToJSON LoggerConfig where
 
 instance FromJSON (LoggerConfig → LoggerConfig) where
     parseJSON = withObject "LoggerConfig" $ \o → id
-        <$< loggerConfigQueueSize ..: "queue_size" × o
-        <*< loggerConfigThreshold ..: "log_level" × o
-        <*< loggerConfigScope ..: "scope" × o
-        <*< loggerConfigPolicy ..: "policy" × o
-        <*< loggerConfigExceptionLimit ..: "exception_limit" × o
-        <*< loggerConfigExceptionWait ..: "exception_wait" × o
-        <*< loggerConfigExitTimeout ..: "exit_timeout" × o
+        <$< loggerConfigQueueSize ..: "queue_size" % o
+        <*< loggerConfigThreshold ..: "log_level" % o
+        <*< loggerConfigScope ..: "scope" % o
+        <*< loggerConfigPolicy ..: "policy" % o
+        <*< loggerConfigExceptionLimit ..: "exception_limit" % o
+        <*< loggerConfigExceptionWait ..: "exception_wait" % o
+        <*< loggerConfigExitTimeout ..: "exit_timeout" % o
 
 pLoggerConfig ∷ MParser LoggerConfig
 pLoggerConfig = pLoggerConfig_ ""
@@ -236,21 +236,21 @@ pLoggerConfig_
     → MParser LoggerConfig
 pLoggerConfig_ prefix = id
     <$< loggerConfigQueueSize .:: option auto
-        × long (T.unpack prefix ⊕ "queue-size")
+        % long (T.unpack prefix ⊕ "queue-size")
         ⊕ metavar "INT"
         ⊕ help "size of the internal logger queue"
     <*< loggerConfigThreshold .:: pLogLevel_ prefix
     <*< loggerConfigPolicy .:: pLogPolicy_ prefix
-    <*< loggerConfigExceptionLimit .:: fmap Just × option auto
-        × long (T.unpack prefix ⊕ "exception-limit")
+    <*< loggerConfigExceptionLimit .:: fmap Just % option auto
+        % long (T.unpack prefix ⊕ "exception-limit")
         ⊕ metavar "INT"
         ⊕ help "maximal number of backend failures before and exception is raised"
-    <*< loggerConfigExceptionWait .:: fmap Just × option auto
-        × long (T.unpack prefix ⊕ "exception-wait")
+    <*< loggerConfigExceptionWait .:: fmap Just % option auto
+        % long (T.unpack prefix ⊕ "exception-wait")
         ⊕ metavar "INT"
         ⊕ help "time to wait after an backend failure occured"
-    <*< loggerConfigExitTimeout .:: fmap Just × option auto
-        × long (T.unpack prefix ⊕ "exit-timeout")
+    <*< loggerConfigExitTimeout .:: fmap Just % option auto
+        % long (T.unpack prefix ⊕ "exit-timeout")
         ⊕ metavar "INT"
         ⊕ help "timeout for flushing the log message queue on exit"
 

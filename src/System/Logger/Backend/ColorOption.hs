@@ -121,7 +121,7 @@ pColorOption_
         -- ^ prefix for the command line options.
     → O.Parser ColorOption
 pColorOption_ prefix = option (eitherReader readColorOption)
-   × long (T.unpack prefix ⊕ "color")
+   % long (T.unpack prefix ⊕ "color")
    ⊕ short 'c'
    ⊕ help "whether to use ANSI terminal colors in the output"
 

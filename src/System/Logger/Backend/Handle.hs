@@ -153,7 +153,7 @@ pLoggerHandleConfig_
         -- ^ prefix for the command line options.
     → O.Parser LoggerHandleConfig
 pLoggerHandleConfig_ prefix = option (eitherReader readLoggerHandleConfig)
-    × long (T.unpack prefix ⊕ "logger-backend-handle")
+    % long (T.unpack prefix ⊕ "logger-backend-handle")
     ⊕ metavar "stdout|stderr|file:<FILENAME>"
     ⊕ help "handle where the logs are written"
 
@@ -198,8 +198,8 @@ instance ToJSON HandleBackendConfig where
 
 instance FromJSON (HandleBackendConfig → HandleBackendConfig) where
     parseJSON = withObject "HandleBackendConfig" $ \o → id
-        <$< handleBackendConfigColor ..: "color" × o
-        <*< handleBackendConfigHandle ..: "handle" × o
+        <$< handleBackendConfigColor ..: "color" % o
+        <*< handleBackendConfigHandle ..: "handle" % o
 
 pHandleBackendConfig ∷ MParser HandleBackendConfig
 pHandleBackendConfig = pHandleBackendConfig_ ""
