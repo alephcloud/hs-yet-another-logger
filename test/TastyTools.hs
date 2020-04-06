@@ -1,4 +1,4 @@
--- Copyright (c) 2016-2018 Lars Kuhtz <lakuhtz@gmail.com>
+-- Copyright (c) 2016-2020 Lars Kuhtz <lakuhtz@gmail.com>
 -- Copyright (c) 2013-2015 PivotCloud, Inc. All Rights Reserved.
 --
 -- NOTICE: The dissemination, reproduction, or copying of this file and the
@@ -10,7 +10,7 @@
 -- |
 -- Module: TastyTools
 -- Copyright:
---     Copyright (c) 2016-2018 Lars Kuhtz <lakuhtz@gmail.com>
+--     Copyright (c) 2016-2020 Lars Kuhtz <lakuhtz@gmail.com>
 --     Copyright (c) 2013-2015 PivotCloud, Inc. All Rights Reserved.
 -- License: All Rights Reserved, see LICENSE file of the package
 -- Maintainer: Lars Kuhtz <lakuhtz@gmail>
@@ -18,11 +18,11 @@
 --
 
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
@@ -140,4 +140,3 @@ testCaseSteps
     → TestTree
 testCaseSteps testName inner = singleTest (T.unpack testName) $
     TestCaseProgress $ \f → inner (f 0)
-
