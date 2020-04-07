@@ -1,5 +1,20 @@
-0.3.1
-=====
+# yet-another-logger
+
+## Unreleased
+
+#### Changed
+
+- `microlens` is now used in place of `lens`.
+- The three lensy functions of the `LoggerCtx` class which were previously
+  `Setter'` are now `Lens'`.
+- The following functions are now less polymorphic, requiring a strict `Text`
+  instead of anything that had a `IsText` instance:
+  - `readColorOption`
+  - `readLoggerHandleConfig`
+  - `readLogLevel`
+  - `readLogPolicy`
+
+## 0.3.1
 
 *   Add support for tasty-hunit >= 0.10.
 
@@ -13,8 +28,7 @@
 
 *   Drop support for GHC < 7.10.
 
-0.3.0
-=====
+## 0.3.0
 
 *   Remove `EitherT` instance. It's recommended to use `ExceptT` instead.
 
@@ -28,20 +42,17 @@
 
 *   Support for Cabal-1.18 and time >= 1.4 && < 1.5.
 
-0.2.3.1
-=======
+## 0.2.3.1
 
 *   Add missing NFData instance for `Natural` when build with
     deepseq>=1.4 and base<4.8.
 
-0.2.3
-=====
+## 0.2.3
 
 *   Fix semantically invalid default NFData instance when build with
     deepseq <1.4.
 
-0.2.2
-=====
+## 0.2.2
 
 *   [Issue #28] Generalized type of lens `logMsg` to support changing
     the message type.
@@ -52,13 +63,11 @@
     in the log message type and accept a formatting function for
     formatting the log message as text.
 
-0.2.1
-=====
+## 0.2.1
 
 *   Support for trace-0.2.
 
-0.2
-===
+## 0.2
 
 *   Removed `MonadLogIO`; `MonadBaseControl` should be used instead.
 
@@ -113,14 +122,12 @@
 *   Issue #6: use `TBMChan` as internal queue implementation until a new version of
     stm is released with a [fix for `TQueue`](https://ghc.haskell.org/trac/ghc/ticket/9539).
 
-0.1.1
-=====
+## 0.1.1
 
 *   Added `MonadLogIO` for loggers that allow to extract a log
     function of type `LogFunctionIO`.
 
-0.1
-===
+## 0.1
 
 *   Added `localScope` function to `MonadLog` and and implemented `withLabel`
     based on it.
@@ -132,8 +139,6 @@
 
 *   Lift `MonadTrace` instances into `LoggerCtxT`.
 
-0.0.1
-=====
+## 0.0.1
 
 First public release
-
