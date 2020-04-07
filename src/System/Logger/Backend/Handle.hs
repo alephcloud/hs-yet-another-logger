@@ -68,21 +68,20 @@ import Configuration.Utils hiding (Error, Lens')
 import Configuration.Utils.Validation
 
 import Control.DeepSeq
-import Control.Lens hiding ((.=))
 import Control.Monad.Except
 import Control.Monad.Trans.Control
 import Control.Monad.Writer
 
-import qualified Data.CaseInsensitive as CI
 import qualified Data.List as L
 import Data.Monoid.Unicode
 import Data.String
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
-import Data.Text.Lens
 import Data.Typeable
 
 import GHC.Generics
+
+import Lens.Micro
 
 import qualified Options.Applicative as O
 
@@ -109,18 +108,16 @@ data LoggerHandleConfig
 instance NFData LoggerHandleConfig
 
 readLoggerHandleConfig
-    ∷ (MonadError e m, Eq a, Show a, CI.FoldCase a, IsText a, IsString e, Monoid e)
-    ⇒ a
+    ∷ (MonadError e m, IsString e, Monoid e)
+    ⇒ T.Text
     → m LoggerHandleConfig
-readLoggerHandleConfig x = case CI.mk tx of
+readLoggerHandleConfig x = case T.toLower x of
     "stdout" → return StdOut
     "stderr" → return StdErr
-    _ | CI.mk (L.take 5 tx) ≡ "file:" → return $ FileHandle (L.drop 5 tx)
+    tx | T.take 5 tx ≡ "file:" → return . FileHandle . T.unpack $ T.drop 5 tx
     e → throwError $ "unexpected logger handle value: "
         ⊕ fromString (show e)
         ⊕ ", expected \"stdout\", \"stderr\", or \"file:<FILENAME>\""
-  where
-    tx = packed # x
 
 loggerHandleConfigText
     ∷ (IsString a, Monoid a)
@@ -152,7 +149,7 @@ pLoggerHandleConfig_
     ∷ T.Text
         -- ^ prefix for the command line options.
     → O.Parser LoggerHandleConfig
-pLoggerHandleConfig_ prefix = option (eitherReader readLoggerHandleConfig)
+pLoggerHandleConfig_ prefix = option (eitherReader (readLoggerHandleConfig . T.pack))
     % long (T.unpack prefix ⊕ "logger-backend-handle")
     ⊕ metavar "stdout|stderr|file:<FILENAME>"
     ⊕ help "handle where the logs are written"

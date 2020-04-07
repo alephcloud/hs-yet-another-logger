@@ -91,7 +91,6 @@ import Control.Concurrent.STM.TVar
 import Control.DeepSeq
 import Control.Exception.Enclosed
 import Control.Exception.Lifted
-import Control.Lens hiding ((.=))
 import Control.Monad.Except
 import Control.Monad.STM
 import Control.Monad.Trans.Control
@@ -104,6 +103,8 @@ import Data.Typeable
 import Data.Void
 
 import GHC.Generics
+
+import Lens.Micro
 
 import Numeric.Natural
 

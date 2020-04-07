@@ -64,7 +64,6 @@ module System.Logger
 
 import Configuration.Utils hiding (Lens')
 
-import Control.Lens hiding ((.=))
 import Control.Monad.IO.Class
 import Control.Monad.Trans.Control
 
@@ -72,6 +71,8 @@ import qualified Data.Text as T
 import Data.Typeable
 
 import GHC.Generics
+
+import Lens.Micro
 
 import Prelude.Unicode
 

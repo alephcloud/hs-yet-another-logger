@@ -51,7 +51,6 @@ import Configuration.Utils
 import Control.DeepSeq
 import Control.Monad.Except
 
-import qualified Data.CaseInsensitive as CI
 import Data.Monoid.Unicode
 import Data.String
 import qualified Data.Text as T
@@ -80,10 +79,10 @@ data ColorOption
 instance NFData ColorOption
 
 readColorOption
-    ∷ (Monad m, Eq a, Show a, CI.FoldCase a, IsString a, IsString e, Monoid e, MonadError e m)
-    ⇒ a
+    ∷ (Monad m, IsString e, Monoid e, MonadError e m)
+    ⇒ T.Text
     → m ColorOption
-readColorOption x = case CI.mk x of
+readColorOption x = case T.toLower x of
     "auto" → return ColorAuto
     "false" → return ColorFalse
     "true" → return ColorTrue
@@ -120,7 +119,7 @@ pColorOption_
     ∷ T.Text
         -- ^ prefix for the command line options.
     → O.Parser ColorOption
-pColorOption_ prefix = option (eitherReader readColorOption)
+pColorOption_ prefix = option (eitherReader (readColorOption . T.pack))
    % long (T.unpack prefix ⊕ "color")
    ⊕ short 'c'
    ⊕ help "whether to use ANSI terminal colors in the output"
