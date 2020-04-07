@@ -1,4 +1,4 @@
-![](https://github.com/alephcloud/hs-yet-another-logger-tools/workflows/Tests/badge.svg)
+![](https://github.com/alephcloud/hs-yet-another-logger/workflows/Tests/badge.svg)
 
 A logging framework written with flexibility and performance in mind.
 
