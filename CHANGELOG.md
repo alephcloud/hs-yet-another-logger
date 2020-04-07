@@ -1,6 +1,6 @@
 # yet-another-logger
 
-## Unreleased
+## 0.4.0 (2020-04-07)
 
 #### Changed
 
