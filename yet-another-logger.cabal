@@ -1,4 +1,4 @@
-Cabal-version: 1.22
+Cabal-version: 2.4
 Name: yet-another-logger
 Version: 0.3.1
 Synopsis: Yet Another Logger
@@ -54,7 +54,7 @@ License: Apache-2.0
 Author: Lars Kuhtz <lakuhtz@gmail.com>
 Maintainer: Lars Kuhtz <lakuhtz@gmail.com>
 Copyright:
-    Copyright (c) 2016-2018 Lars Kuhtz <lakuhtz@gmail.com>
+    Copyright (c) 2016-2022 Lars Kuhtz <lakuhtz@gmail.com>
     Copyright (c) 2014-2015 PivotCloud, Inc.
 Category: Logging, System
 Build-type: Simple
