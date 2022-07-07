@@ -21,7 +21,7 @@
 -- Module: System.Logger.Internal.Queue
 -- Description: Queues for Usage with Yet Another Logger
 -- Copyright:
---     Copyright © 2016-2018 Lars Kuhtz <lakuhtz@gmail.com>
+--     Copyright © 2016-2022 Lars Kuhtz <lakuhtz@gmail.com>
 --     Copyright © 2015 PivotCloud, Inc.
 -- License: Apache-2.0
 -- Maintainer: Lars Kuhtz <lakuhtz@gmail.com>
@@ -31,7 +31,6 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ScopedTypeVariables #-}
