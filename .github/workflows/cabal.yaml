@@ -1,0 +1,36 @@
+on: [push]
+name: build
+jobs:
+  build:
+
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        ghc: ['8.10.7', '9.0.2', '9.2.3']
+        cabal: ['3.6.2.0']
+        os: [ubuntu-latest, macOS-latest, windows-latest]
+
+    name: GHC ${{ matrix.ghc }}
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Setup Haskell
+      uses: haskell/actions/setup@v2
+      with:
+        ghc-version: ${{ matrix.ghc }}
+        cabal-version: ${{ matrix.cabal }}
+
+    - name: update cabal
+      run: cabal update
+
+    - name: Install build dependencies
+      run: cabal build --only-dependencies
+
+    - name: build
+      run: cabal build
+
+    - name: test
+      run: cabal test
+

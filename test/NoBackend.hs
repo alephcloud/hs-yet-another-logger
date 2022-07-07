@@ -219,14 +219,14 @@ testBackend
     → Natural
         -- ^ minimal delay before returning in microseconds
     → LoggerBackend msg
-testBackend _logLog delayMicro (Right LogMessage{..}) =
+testBackend _logLog delayMicro (Right _) =
     -- simulate deliver by applying the delay
     threadDelay (fromIntegral delayMicro) ≫ return ()
 
-testBackend logLog delayMicro (Left LogMessage{..}) = do
+testBackend logLog delayMicro (Left l) = do
     -- assume that the message comes from the logging system itself.
     -- simulate delivery by applying the delay.
-    logLog $ "[" ⊕ logLevelText _logMsgLevel ⊕ "] " ⊕ sshow _logMsg
+    logLog $ "[" ⊕ logLevelText (_logMsgLevel l) ⊕ "] " ⊕ sshow (_logMsg l)
     threadDelay (fromIntegral delayMicro)
 
 -- -------------------------------------------------------------------------- --
