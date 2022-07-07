@@ -26,10 +26,10 @@ main = do
     withConsoleLogger Info $ withLabel ("logger", "console") run
 
     -- log to a file
-    withTempFile "." "logfile.log" $ \f h → do
+    withTempFile "." "logfile.log" $ \file h → do
         hClose h
-        withFileLogger f Info $ withLabel ("logger", "file") run
-        readFile f >>= putStrLn
+        withFileLogger file Info $ withLabel ("logger", "file") run
+        readFile file >>= putStrLn
 
   where
     f = withLevel Debug $ logg Debug "debug f"
