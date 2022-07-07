@@ -1,6 +1,6 @@
 Cabal-version: 2.4
 Name: yet-another-logger
-Version: 0.4.0
+Version: 0.4.1
 Synopsis: Yet Another Logger
 Description:
     A logging framework written with flexibility and performance
