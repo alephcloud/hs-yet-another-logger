@@ -1,4 +1,4 @@
--- Copyright (c) 2016-2018 Lars Kuhtz <lakuhtz@gmail.com>
+-- Copyright (c) 2016-2020 Lars Kuhtz <lakuhtz@gmail.com>
 -- Copyright (c) 2014-2015 PivotCloud, Inc.
 --
 -- System.Logger.Types
@@ -21,7 +21,7 @@
 -- Module: System.Logger.Types
 -- Description: Basic Types of Yet Another Logger
 -- Copyright:
---     Copyright (c) 2016-2018 Lars Kuhtz <lakuhtz@gmail.com>
+--     Copyright (c) 2016-2020 Lars Kuhtz <lakuhtz@gmail.com>
 --     Copyright (c) 2014-2015 PivotCloud, Inc.
 -- License: Apache License, Version 2.0
 -- Maintainer: Lars Kuhtz <lakuhtz@gmail.com>
@@ -98,7 +98,6 @@ import Configuration.Utils hiding (Lens, Lens', Error)
 
 import Control.DeepSeq
 import Control.Exception
-import Control.Lens hiding ((.=))
 import Control.Monad.Base
 import Control.Monad.Catch (MonadThrow, MonadCatch, MonadMask)
 import Control.Monad.Except
@@ -108,15 +107,15 @@ import Control.Monad.State
 import Control.Monad.Writer
 import Control.Monad.Unicode
 
-import qualified Data.CaseInsensitive as CI
 import Data.Monoid.Unicode
 import Data.String
 import qualified Data.Text as T
-import Data.Text.Lens
 import Data.Typeable
 import Data.Void
 
 import GHC.Generics
+
+import Lens.Micro
 
 import qualified Options.Applicative as O
 
@@ -138,10 +137,10 @@ data LogLevel
 instance NFData LogLevel
 
 readLogLevel
-    ∷ (MonadError e m, Eq a, Show a, CI.FoldCase a, IsString a, IsString e, Monoid e)
-    ⇒ a
+    ∷ (MonadError e m, IsString e, Monoid e)
+    ⇒ T.Text
     → m LogLevel
-readLogLevel x = case CI.mk x of
+readLogLevel x = case T.toLower x of
     "quiet" → return Quiet
     "error" → return Error
     "warn" → return Warn
@@ -179,7 +178,7 @@ pLogLevel_
     ∷ T.Text
         -- ^ prefix for the command line options.
     → O.Parser LogLevel
-pLogLevel_ prefix = option (eitherReader readLogLevel)
+pLogLevel_ prefix = option (eitherReader (readLogLevel . T.pack))
     % long (T.unpack prefix ⊕ "log-level")
     ⊕ metavar "quiet|error|warn|info|debug"
     ⊕ help "threshold for log messages"
@@ -204,18 +203,16 @@ logPolicyText LogPolicyRaise = "raise"
 logPolicyText LogPolicyBlock = "block"
 
 readLogPolicy
-    ∷ (MonadError e m, Eq a, Show a, CI.FoldCase a, IsText a, IsString e, Monoid e)
-    ⇒ a
+    ∷ (MonadError e m, IsString e, Monoid e)
+    ⇒ T.Text
     → m LogPolicy
-readLogPolicy x = case CI.mk tx of
+readLogPolicy x = case T.toLower x of
     "discard" → return LogPolicyDiscard
     "raise" → return LogPolicyRaise
     "block" → return LogPolicyBlock
     e → throwError
         $ "invalid log policy value " ⊕ fromString (show e) ⊕ ";"
         ⊕ " the log policy value must be one of \"discard\", \"raise\", or \"block\""
-  where
-    tx = packed # x
 
 instance ToJSON LogPolicy where
     toJSON = toJSON ∘ (logPolicyText ∷ LogPolicy → T.Text)
@@ -235,7 +232,7 @@ pLogPolicy_
     ∷ T.Text
         -- ^ prefix for the command line options.
     → O.Parser LogPolicy
-pLogPolicy_ prefix = option (eitherReader readLogPolicy)
+pLogPolicy_ prefix = option (eitherReader (readLogPolicy . T.pack))
     % long (T.unpack prefix ⊕ "log-policy")
     ⊕ metavar "block|raise|discard"
     ⊕ help "how to deal with a congested logging pipeline"
@@ -499,9 +496,9 @@ class LoggerCtx ctx msg | ctx → msg where
         ⇒ ctx
         → LogFunctionIO msg
 
-    setLoggerLevel ∷ Setter' ctx LogLevel
-    setLoggerScope ∷ Setter' ctx LogScope
-    setLoggerPolicy ∷ Setter' ctx LogPolicy
+    setLoggerLevel ∷ Lens' ctx LogLevel
+    setLoggerScope ∷ Lens' ctx LogScope
+    setLoggerPolicy ∷ Lens' ctx LogPolicy
 
     withLoggerLevel ∷ LogLevel → ctx → (ctx → α) → α
     withLoggerLevel level ctx f = f $ ctx & setLoggerLevel .~ level
@@ -549,4 +546,3 @@ instance (Show a, Typeable a, NFData a, MonadIO m, LoggerCtx ctx a) ⇒ MonadLog
     {-# INLINE withLevel #-}
     {-# INLINE withPolicy #-}
     {-# INLINE localScope #-}
-

@@ -1,4 +1,4 @@
--- Copyright (c) 2016-2018 Lars Kuhtz <lakuhtz@gmail.com>
+-- Copyright (c) 2016-2020 Lars Kuhtz <lakuhtz@gmail.com>
 -- Copyright (c) 2014-2015 PivotCloud, Inc.
 --
 -- System.Logger
@@ -28,11 +28,11 @@
 -- Stability: experimental
 --
 
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
@@ -137,4 +137,3 @@ instance BoundedCloseableQueue (FairTBMQueue a) a where
     tryWriteQueue FairTBMQueue{..} a = do
         withMVar fairTBMQueueLock $ \_ → do
             tryWriteQueue fairTBMQueueQueue a
-

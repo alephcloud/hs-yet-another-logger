@@ -14,10 +14,10 @@
 -- Stability: experimental
 --
 
-{-# LANGUAGE GADTs #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
@@ -35,7 +35,6 @@ import Control.Exception
 import Control.Exception.Enclosed
 import Control.Monad
 import Control.Monad.Unicode
-import Control.Lens
 
 import Data.IORef
 import Data.Monoid.Unicode
@@ -44,9 +43,11 @@ import qualified Data.Text as T
 import Data.Typeable
 import Data.Void
 
-import Numeric.Natural
-
 import GHC.Generics
+
+import Lens.Micro
+
+import Numeric.Natural
 
 import Prelude.Unicode
 
@@ -218,14 +219,14 @@ testBackend
     → Natural
         -- ^ minimal delay before returning in microseconds
     → LoggerBackend msg
-testBackend _logLog delayMicro (Right LogMessage{..}) =
+testBackend _logLog delayMicro (Right _) =
     -- simulate deliver by applying the delay
     threadDelay (fromIntegral delayMicro) ≫ return ()
 
-testBackend logLog delayMicro (Left LogMessage{..}) = do
+testBackend logLog delayMicro (Left l) = do
     -- assume that the message comes from the logging system itself.
     -- simulate delivery by applying the delay.
-    logLog $ "[" ⊕ logLevelText _logMsgLevel ⊕ "] " ⊕ sshow _logMsg
+    logLog $ "[" ⊕ logLevelText (_logMsgLevel l) ⊕ "] " ⊕ sshow (_logMsg l)
     threadDelay (fromIntegral delayMicro)
 
 -- -------------------------------------------------------------------------- --
@@ -330,4 +331,3 @@ buggyBackendLogger exception isException logLog config delayMicro f =
 
 sshow ∷ (Show a, IsString b) ⇒ a → b
 sshow = fromString ∘ show
-

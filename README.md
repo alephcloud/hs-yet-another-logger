@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/alephcloud/hs-yet-another-logger.svg)](https://travis-ci.org/alephcloud/hs-yet-another-logger)
+![](https://github.com/alephcloud/hs-yet-another-logger/workflows/Tests/badge.svg)
 
 A logging framework written with flexibility and performance in mind.
 
@@ -103,4 +103,3 @@ aggregated for statistical analysis before the messages are discarded. The
 modular design, which decouples generation and serialization of log messages,
 allows one to accommodate these different scenarios by just using different
 back-ends, possibly parameterized by the formatting function.
-
