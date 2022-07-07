@@ -1,5 +1,13 @@
 # yet-another-logger
 
+## 0.4.1 (2022-07-07)
+
+*   Add a build flag for using `TBMQueue` instead of `TBMChan` as log message
+    queue. (#54)
+
+*   Performance improvements under high load when many messages are dropped.
+    (#53)
+
 ## 0.4.0 (2020-04-07)
 
 #### Changed
