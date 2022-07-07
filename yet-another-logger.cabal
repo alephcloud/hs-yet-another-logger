@@ -68,11 +68,10 @@ source-repository head
     type: git
     location: https://github.com/alephcloud/hs-yet-another-logger
 
-source-repository this
-    type: git
-    location: https://github.com/alephcloud/hs-yet-another-logger
-    branch: master
-    tag: 0.3.1
+flag tbmqueue
+    description: Use TBMQueue as logger queue. The default is to use TBMChan.
+    default: False
+    manual: True
 
 Library
     default-language: Haskell2010
@@ -114,6 +113,9 @@ Library
         void >= 0.7
 
     ghc-options: -Wall
+
+    if flag(tbmqueue)
+        cpp-options: -DUSE_TBMQUEUE
 
 test-suite tests
     type: exitcode-stdio-1.0

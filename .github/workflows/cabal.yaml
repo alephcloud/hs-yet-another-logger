@@ -9,6 +9,7 @@ jobs:
       matrix:
         ghc: ['8.10.7', '9.0.2', '9.2.3']
         cabal: ['3.6.2.0']
+        queue: ['-tmbqueue', '+tbmqueue']
         os: [ubuntu-latest, macOS-latest, windows-latest]
 
     name: GHC ${{ matrix.ghc }}
@@ -22,6 +23,18 @@ jobs:
         ghc-version: ${{ matrix.ghc }}
         cabal-version: ${{ matrix.cabal }}
 
+    - name: create cabal.project
+      shell: bash
+      run: |
+        cat > cabal.project <<EOF
+        cat > cabal.project.local <<EOF
+        packages: .
+        package yet-another-logger
+            flags: ${{ matrix.queue }}
+            tests: True
+            ghc-options: -Wall -Wwarn=unused-packages
+        EOF
+
     - name: update cabal
       run: cabal update
 
@@ -33,4 +46,7 @@ jobs:
 
     - name: test
       run: cabal test
+
+    - name: example
+      run: cabal run example
 
