@@ -12,8 +12,6 @@ jobs:
         queue: ['-tmbqueue', '+tbmqueue']
         os: [ubuntu-latest, macOS-latest, windows-latest]
 
-    name: GHC ${{ matrix.ghc }}
-
     steps:
     - uses: actions/checkout@v3
 
