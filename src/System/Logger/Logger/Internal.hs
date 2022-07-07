@@ -21,7 +21,7 @@
 -- Module: System.Logger.Logger.Internal
 -- Description: Yet Another Logger Implementation
 -- Copyright:
---     Copyright (c) 2016-2018 Lars Kuhtz <lakuhtz@gmail.com>
+--     Copyright (c) 2016-2022 Lars Kuhtz <lakuhtz@gmail.com>
 --     Copyright (c) 2014-2015 PivotCloud, Inc.
 -- License: Apache License, Version 2.0
 -- Maintainer: Lars Kuhtz <lakuhtz@gmail.com>
@@ -34,6 +34,7 @@
 -- module as an example and starting point.
 --
 
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE DeriveDataTypeable #-}
@@ -86,9 +87,6 @@ import Configuration.Utils hiding (Lens', Error)
 
 import Control.Concurrent (threadDelay)
 import Control.Concurrent.Async
--- FIXME: use a better data structure with non-amortized complexity bounds
-import Control.Monad.STM
-import Control.Concurrent.STM.TVar
 import Control.DeepSeq
 import Control.Exception.Lifted
 import Control.Exception.Enclosed
@@ -97,6 +95,7 @@ import Control.Monad.Except
 import Control.Monad.Trans.Control
 import Control.Monad.Unicode
 
+import Data.IORef
 import Data.Monoid.Unicode
 import qualified Data.Text as T
 import Data.Typeable
@@ -104,6 +103,7 @@ import qualified Data.Text.IO as T (hPutStrLn)
 import Data.Void
 
 import GHC.Generics
+import GHC.IORef
 
 import Numeric.Natural
 
@@ -280,7 +280,7 @@ data Logger a = Logger
     , _loggerThreshold ∷ !LogLevel
     , _loggerScope ∷ !LogScope
     , _loggerPolicy ∷ !LogPolicy
-    , _loggerMissed ∷ !(TVar Natural)
+    , _loggerMissed ∷ !(IORef Natural)
     , _loggerExitTimeout ∷ !(Maybe Natural)
     , _loggerErrLogFunction ∷ !(T.Text → IO ())
     }
@@ -306,7 +306,7 @@ loggerPolicy ∷ Lens' (Logger a) LogPolicy
 loggerPolicy = lens _loggerPolicy $ \a b → a { _loggerPolicy = b }
 {-# INLINE loggerPolicy #-}
 
-loggerMissed ∷ Lens' (Logger a) (TVar Natural)
+loggerMissed ∷ Lens' (Logger a) (IORef Natural)
 loggerMissed = lens _loggerMissed $ \a b → a { _loggerMissed = b }
 {-# INLINE loggerMissed #-}
 
@@ -382,7 +382,7 @@ createLogger_
     → μ (Logger a)
 createLogger_ errLogFun LoggerConfig{..} backend = liftIO $ do
     queue ← newQueue (fromIntegral _loggerConfigQueueSize)
-    missed ← newTVarIO 0
+    missed ← newIORef 0
     worker ← backendWorker errLogFun _loggerConfigExceptionLimit _loggerConfigExceptionWait backend queue missed
     -- we link the worker to the calling thread. This way all exception from
     -- the logger are rethrown. This includes asynchronous exceptions, but
@@ -402,15 +402,15 @@ createLogger_ errLogFun LoggerConfig{..} backend = liftIO $ do
 
 -- | A backend worker.
 --
--- The only way for this function to exist without an exception is when
--- the interal logger queue is closed through a call to 'releaseLogger'.
+-- The only way for this function to exit without an exception is when
+-- the internal logger queue is closed through a call to 'releaseLogger'.
 --
 backendWorker
     ∷ (T.Text → IO ())
         -- ^ alternate sink for logging exceptions in the logger itself.
     → Maybe Natural
         -- ^ number of consecutive backend exception that can occur before the logger
-        -- to raises an 'BackendTooManyExceptions' exception. If this is 'Nothing'
+        -- raises an 'BackendTooManyExceptions' exception. If this is 'Nothing'
         -- the logger will discard all exceptions. For instance a value of @1@
         -- means that an exception is raised when the second exception occurs.
         -- A value of @0@ means that an exception is raised for each exception.
@@ -419,7 +419,7 @@ backendWorker
         -- If this is 'Nothing' the logger won't wait at all after an exception.
     → LoggerBackend a
     → LoggerQueue a
-    → TVar Natural
+    → IORef Natural
     → IO (Async ())
 backendWorker errLogFun errLimit errWait backend queue missed = mask_ $
     asyncWithUnmask $ \umask → umask (go []) `catch` \(_ ∷ LoggerKilled) → return ()
@@ -470,7 +470,7 @@ backendWorker errLogFun errLimit errWait backend queue missed = mask_ $
     -- a new message arrives
     --
     readMsg t = do
-        n ← atomically $ swapTVar missed 0
+        n ← atomicSwapIORef missed 0
         if n > 0
           then do
             return ∘ Just ∘ Left $ discardMsg t n
@@ -624,7 +624,7 @@ loggCtx Logger{..} level msg = do
                     }
             | otherwise → return ()
   where
-    writeWithLogPolicy lmsg
+    writeWithLogPolicy !lmsg
         | _loggerPolicy ≡ LogPolicyBlock = void $ writeQueue _loggerQueue lmsg
         | otherwise = tryWriteQueue _loggerQueue lmsg ≫= \case
             -- Success
@@ -633,7 +633,7 @@ loggCtx Logger{..} level msg = do
             Just False → return ()
             -- Queue is full
             Nothing
-                | _loggerPolicy ≡ LogPolicyDiscard → atomically $ modifyTVar' _loggerMissed succ
+                | _loggerPolicy ≡ LogPolicyDiscard → atomicModifyIORef' _loggerMissed (\x → (x + 1, ()))
                 | _loggerPolicy ≡ LogPolicyRaise → throwIO $ QueueFullException lmsg
                 | otherwise → return () -- won't happen, covered above.
 {-# INLINEABLE loggCtx #-}
