@@ -1,6 +1,6 @@
 Cabal-version: 2.4
 Name: yet-another-logger
-Version: 0.4.1
+Version: 0.4.2
 Synopsis: Yet Another Logger
 Description:
     A logging framework written with flexibility and performance
@@ -54,7 +54,7 @@ License: Apache-2.0
 Author: Lars Kuhtz <lakuhtz@gmail.com>
 Maintainer: Lars Kuhtz <lakuhtz@gmail.com>
 Copyright:
-    Copyright (c) 2016-2022 Lars Kuhtz <lakuhtz@gmail.com>
+    Copyright (c) 2016-2023 Lars Kuhtz <lakuhtz@gmail.com>
     Copyright (c) 2014-2015 PivotCloud, Inc.
 Category: Logging, System
 Build-type: Simple

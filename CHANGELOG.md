@@ -1,5 +1,10 @@
 # yet-another-logger
 
+## 0.4.2 (2023-06-23)
+
+*   Support mtl >=2.3.
+*   Tested with GHC-9.6.
+
 ## 0.4.1 (2022-07-07)
 
 *   Add a build flag for using `TBMQueue` instead of `TBMChan` as log message
