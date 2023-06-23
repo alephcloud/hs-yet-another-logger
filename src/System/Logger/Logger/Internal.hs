@@ -90,7 +90,8 @@ import Control.Concurrent.Async
 import Control.DeepSeq
 import Control.Exception.Enclosed
 import Control.Exception.Lifted
-import Control.Monad.Except
+import Control.Monad (void)
+import Control.Monad.IO.Class
 import Control.Monad.Trans.Control
 import Control.Monad.Unicode
 
