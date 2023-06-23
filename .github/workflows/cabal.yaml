@@ -7,8 +7,8 @@ jobs:
 
     strategy:
       matrix:
-        ghc: ['8.10.7', '9.0.2', '9.2.3']
-        cabal: ['3.6.2.0']
+        ghc: ['8.10.7', '9.0', '9.2', '9.4', '9.6']
+        cabal: ['3.10']
         queue: ['-tmbqueue', '+tbmqueue']
         os: [ubuntu-latest, macOS-latest, windows-latest]
 
@@ -24,17 +24,30 @@ jobs:
     - name: create cabal.project
       shell: bash
       run: |
-        cat > cabal.project <<EOF
         cat > cabal.project.local <<EOF
-        packages: .
         package yet-another-logger
             flags: ${{ matrix.queue }}
             tests: True
             ghc-options: -Wall -Wwarn=unused-packages
         EOF
 
+    # Restore Packages from Caches
+    - uses: actions/cache@v3
+      name: Cache cabal packages
+      with:
+        path: |
+          ~/.cabal/packages
+          ~/.cabal/store
+          dist-newstyle
+        key: ${{ matrix.os }}-${{ matrix.ghc }}-cabal
+
     - name: update cabal
       run: cabal update
+
+    - name: Configure build
+      run: |
+        cabal build all --dry-run
+        cabal freeze
 
     - name: Install build dependencies
       run: cabal build --only-dependencies
